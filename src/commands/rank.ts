@@ -6,9 +6,11 @@ import { buildPaginationRow } from '../lib/pagination';
 import { RANK_PAGE_SIZE } from '../config';
 
 export async function handleRankCommand(interaction: ChatInputCommandInteraction) {
+  await interaction.deferReply();
+
   const season = await getActiveSeason();
   if (!season) {
-    await interaction.reply({ content: 'Nenhuma season ativa no momento.', ephemeral: true });
+    await interaction.editReply({ content: 'Nenhuma season ativa no momento.' });
     return;
   }
 
@@ -16,7 +18,7 @@ export async function handleRankCommand(interaction: ChatInputCommandInteraction
   const result = await getLeaderboard(season.id, page);
 
   if (page > result.totalPages) {
-    await interaction.reply({ content: `Página inválida. Total: ${result.totalPages}`, ephemeral: true });
+    await interaction.editReply({ content: `Página inválida. Total: ${result.totalPages}` });
     return;
   }
 
@@ -24,5 +26,5 @@ export async function handleRankCommand(interaction: ChatInputCommandInteraction
   const embed = buildRankEmbed(season.number, result.players, result.page, result.totalPages, startRank);
   const row = buildPaginationRow(result.page, result.totalPages);
 
-  await interaction.reply({ embeds: [embed], components: [row] });
+  await interaction.editReply({ embeds: [embed], components: [row] });
 }
