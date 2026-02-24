@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DuelStatus {
+  PROPOSED
+  ACCEPTED
+  IN_PROGRESS
+  RESULT_SUBMITTED
+  AWAITING_VALIDATION
+  CONFIRMED
+  CANCELLED
+  EXPIRED
+}
+
+enum DuelMode {
+  RANKED
+  CASUAL
+}
+
+enum DuelFormat {
+  MD1
+  MD3
+}
+
+model Season {
+  id        Int      @id @default(autoincrement())
+  number    Int      @unique
+  startDate DateTime @default(now())
+  endDate   DateTime
+  active    Boolean  @default(true)
+
+  champion   Player?        @relation("SeasonChampion", fields: [championId], references: [id])
+  championId Int?
+
+  duels         Duel[]
+  playerSeasons PlayerSeason[]
+}
+
+model Player {
+  id        Int      @id @default(autoincrement())
+  discordId String   @unique
+  username  String
+  createdAt DateTime @default(now())
+
+  challengerDuels Duel[] @relation("Challenger")
+  opponentDuels   Duel[] @relation("Opponent")
+  witnessDuels    Duel[] @relation("Witness")
+  wonDuels        Duel[] @relation("Winner")
+
+  playerSeasons    PlayerSeason[]
+  championSeasons  Season[] @relation("SeasonChampion")
+}
+
+model PlayerSeason {
+  id         Int @id @default(autoincrement())
+  playerId   Int
+  seasonId   Int
+  points     Int @default(0)
+  wins       Int @default(0)
+  losses     Int @default(0)
+  streak     Int @default(0)
+  peakStreak Int @default(0)
+
+  player Player @relation(fields: [playerId], references: [id])
+  season Season @relation(fields: [seasonId], references: [id])
+
+  @@unique([playerId, seasonId])
+}
+
+model Duel {
+  id     Int        @id @default(autoincrement())
+  status DuelStatus @default(PROPOSED)
+  mode   DuelMode
+  format DuelFormat
+
+  challengerId Int
+  opponentId   Int
+  witnessId    Int?
+  seasonId     Int
+  winnerId     Int?
+
+  scoreWinner Int?
+  scoreLoser  Int?
+
+  opponentAccepted Boolean @default(false)
+  witnessAccepted  Boolean @default(false)
+
+  channelId String?
+  messageId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  challenger Player @relation("Challenger", fields: [challengerId], references: [id])
+  opponent   Player @relation("Opponent", fields: [opponentId], references: [id])
+  witness    Player? @relation("Witness", fields: [witnessId], references: [id])
+  season     Season  @relation(fields: [seasonId], references: [id])
+  winner     Player? @relation("Winner", fields: [winnerId], references: [id])
+}
