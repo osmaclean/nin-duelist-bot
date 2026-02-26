@@ -1,6 +1,5 @@
 import { ModalSubmitInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { getDuelById, submitResult } from '../services/duel.service';
-import { applyResult } from '../services/player.service';
 import { buildDuelEmbed } from '../lib/embeds';
 
 export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction) {
@@ -49,7 +48,6 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
   // Resolve winner player ID
   const winnerId =
     winnerRaw === duel.challenger.discordId ? duel.challengerId : duel.opponentId;
-  const loserId = winnerId === duel.challengerId ? duel.opponentId : duel.challengerId;
 
   await interaction.deferUpdate();
 
@@ -59,15 +57,10 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
     return;
   }
 
-  // If confirmed directly (casual without witness), apply result
-  if (updated.status === 'CONFIRMED' && updated.mode === 'RANKED') {
-    await applyResult(winnerId, loserId, duel.seasonId);
-  }
-
   const embed = buildDuelEmbed(updated);
   const components: ActionRowBuilder<ButtonBuilder>[] = [];
 
-  if (updated.status === 'AWAITING_VALIDATION' && duel.witness) {
+  if (updated.status === 'AWAITING_VALIDATION') {
     components.push(
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()

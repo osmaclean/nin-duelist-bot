@@ -32,6 +32,10 @@ export async function handleAcceptWitness(interaction: ButtonInteraction) {
           .setCustomId(`accept-duel:${duel.id}`)
           .setLabel('Aceitar Duelo')
           .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId(`cancel-duel:${duel.id}`)
+          .setLabel('Cancelar')
+          .setStyle(ButtonStyle.Danger),
       ),
     );
   }
@@ -43,6 +47,10 @@ export async function handleAcceptWitness(interaction: ButtonInteraction) {
           .setCustomId(`start-duel:${duel.id}`)
           .setLabel('Iniciar Duelo')
           .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId(`cancel-duel:${duel.id}`)
+          .setLabel('Cancelar')
+          .setStyle(ButtonStyle.Danger),
       ),
     );
   }

@@ -1,4 +1,4 @@
-import { DuelStatus, DuelMode, DuelFormat } from '@prisma/client';
+import { DuelStatus, DuelFormat } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 
 const DUEL_INCLUDE = {
@@ -11,9 +11,8 @@ const DUEL_INCLUDE = {
 export async function createDuel(params: {
   challengerId: number;
   opponentId: number;
-  witnessId?: number;
+  witnessId: number;
   seasonId: number;
-  mode: DuelMode;
   format: DuelFormat;
   channelId: string;
 }) {
@@ -23,7 +22,7 @@ export async function createDuel(params: {
       opponentId: params.opponentId,
       witnessId: params.witnessId,
       seasonId: params.seasonId,
-      mode: params.mode,
+      mode: 'RANKED',
       format: params.format,
       channelId: params.channelId,
     },
@@ -87,7 +86,7 @@ async function tryMoveToAccepted(duelId: number) {
   if (!duel || duel.status !== 'PROPOSED') return getDuelById(duelId);
 
   const opponentOk = duel.opponentAccepted;
-  const witnessOk = duel.witnessId === null || duel.witnessAccepted;
+  const witnessOk = duel.witnessAccepted;
 
   if (opponentOk && witnessOk) {
     return transitionDuel(duelId, 'PROPOSED', { status: 'ACCEPTED' });
@@ -109,15 +108,8 @@ export async function submitResult(
   const duel = await prisma.duel.findUnique({ where: { id: duelId } });
   if (!duel || duel.status !== 'IN_PROGRESS') return null;
 
-  // Casual without witness → go straight to CONFIRMED
-  const nextStatus =
-    duel.mode === 'CASUAL' && duel.witnessId === null ? 'CONFIRMED' : 'AWAITING_VALIDATION';
-
-  // For ranked, always go to AWAITING_VALIDATION
-  const finalStatus = duel.mode === 'RANKED' ? 'AWAITING_VALIDATION' : nextStatus;
-
   return transitionDuel(duelId, 'IN_PROGRESS', {
-    status: finalStatus,
+    status: 'AWAITING_VALIDATION',
     winnerId,
     scoreWinner,
     scoreLoser,

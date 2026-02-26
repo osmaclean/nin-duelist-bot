@@ -15,6 +15,7 @@ import { handleStartDuel } from '../buttons/start-duel';
 import { handleSubmitResult } from '../buttons/submit-result';
 import { handleConfirmResult } from '../buttons/confirm-result';
 import { handleRejectResult } from '../buttons/reject-result';
+import { handleCancelDuel } from '../buttons/cancel-duel';
 import { handleSubmitScoreModal } from '../modals/submit-score';
 import { handleRankPagination } from '../lib/pagination';
 
@@ -31,6 +32,7 @@ const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = 
   'submit-result': handleSubmitResult,
   'confirm-result': handleConfirmResult,
   'reject-result': handleRejectResult,
+  'cancel-duel': handleCancelDuel,
 };
 
 export function registerInteractionEvent(client: Client) {

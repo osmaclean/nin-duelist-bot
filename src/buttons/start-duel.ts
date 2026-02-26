@@ -34,6 +34,10 @@ export async function handleStartDuel(interaction: ButtonInteraction) {
       .setCustomId(`submit-result:${duel.id}`)
       .setLabel('Enviar Resultado')
       .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`cancel-duel:${duel.id}`)
+      .setLabel('Cancelar')
+      .setStyle(ButtonStyle.Danger),
   );
 
   await interaction.update({ embeds: [embed], components: [row] });

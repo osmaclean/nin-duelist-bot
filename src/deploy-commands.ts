@@ -13,14 +13,7 @@ const commands = [
         .setRequired(true)
         .addChoices({ name: 'MD1 (Melhor de 1)', value: 'MD1' }, { name: 'MD3 (Melhor de 3)', value: 'MD3' }),
     )
-    .addStringOption((o) =>
-      o
-        .setName('mode')
-        .setDescription('Modo do duelo')
-        .setRequired(true)
-        .addChoices({ name: 'Ranked', value: 'RANKED' }, { name: 'Casual', value: 'CASUAL' }),
-    )
-    .addUserOption((o) => o.setName('witness').setDescription('Testemunha (obrigatória em ranked)'))
+    .addUserOption((o) => o.setName('witness').setDescription('Testemunha (obrigatória)').setRequired(true))
     .toJSON(),
 
   new SlashCommandBuilder()

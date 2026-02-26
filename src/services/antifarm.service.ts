@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma';
 
 /**
- * Anti-farm: máximo 1 duelo RANKED confirmado por par por dia civil (UTC).
+ * Anti-farm: máximo 1 duelo confirmado por par por dia civil (UTC).
  * Retorna true se o duelo é permitido.
  */
 export async function canDuelToday(playerAId: number, playerBId: number): Promise<boolean> {
@@ -13,7 +13,6 @@ export async function canDuelToday(playerAId: number, playerBId: number): Promis
 
   const count = await prisma.duel.count({
     where: {
-      mode: 'RANKED',
       status: 'CONFIRMED',
       createdAt: { gte: todayStart, lt: todayEnd },
       OR: [

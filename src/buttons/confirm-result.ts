@@ -12,7 +12,7 @@ export async function handleConfirmResult(interaction: ButtonInteraction) {
     return;
   }
 
-  if (!duel.witness || interaction.user.id !== duel.witness.discordId) {
+  if (interaction.user.id !== duel.witness.discordId) {
     await interaction.reply({ content: 'Apenas a testemunha pode confirmar o resultado.', ephemeral: true });
     return;
   }
@@ -23,8 +23,8 @@ export async function handleConfirmResult(interaction: ButtonInteraction) {
     return;
   }
 
-  // Apply ranking result for ranked duels
-  if (updated.mode === 'RANKED' && updated.winnerId) {
+  // Apply ranking result
+  if (updated.winnerId) {
     const loserId =
       updated.winnerId === updated.challengerId ? updated.opponentId : updated.challengerId;
     await applyResult(updated.winnerId, loserId, updated.seasonId);

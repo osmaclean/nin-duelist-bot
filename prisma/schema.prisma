@@ -20,7 +20,6 @@ enum DuelStatus {
 
 enum DuelMode {
   RANKED
-  CASUAL
 }
 
 enum DuelFormat {
@@ -76,12 +75,12 @@ model PlayerSeason {
 model Duel {
   id     Int        @id @default(autoincrement())
   status DuelStatus @default(PROPOSED)
-  mode   DuelMode
+  mode   DuelMode @default(RANKED)
   format DuelFormat
 
   challengerId Int
   opponentId   Int
-  witnessId    Int?
+  witnessId    Int
   seasonId     Int
   winnerId     Int?
 
@@ -99,7 +98,7 @@ model Duel {
 
   challenger Player @relation("Challenger", fields: [challengerId], references: [id])
   opponent   Player @relation("Opponent", fields: [opponentId], references: [id])
-  witness    Player? @relation("Witness", fields: [witnessId], references: [id])
+  witness    Player @relation("Witness", fields: [witnessId], references: [id])
   season     Season  @relation(fields: [seasonId], references: [id])
   winner     Player? @relation("Winner", fields: [winnerId], references: [id])
 }

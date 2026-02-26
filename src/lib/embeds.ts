@@ -1,10 +1,10 @@
 import { EmbedBuilder, Colors } from 'discord.js';
-import { Duel, Player, DuelStatus, DuelMode, DuelFormat } from '@prisma/client';
+import { Duel, Player, DuelStatus, DuelFormat } from '@prisma/client';
 
 type DuelWithPlayers = Duel & {
   challenger: Player;
   opponent: Player;
-  witness?: Player | null;
+  witness: Player;
   winner?: Player | null;
 };
 
@@ -39,13 +39,9 @@ export function buildDuelEmbed(duel: DuelWithPlayers): EmbedBuilder {
       { name: 'Oponente', value: `<@${duel.opponent.discordId}>`, inline: true },
       { name: '\u200b', value: '\u200b', inline: true },
       { name: 'Formato', value: duel.format === 'MD1' ? 'Melhor de 1' : 'Melhor de 3', inline: true },
-      { name: 'Modo', value: duel.mode === 'RANKED' ? 'Ranked' : 'Casual', inline: true },
       { name: 'Status', value: STATUS_LABELS[duel.status], inline: true },
+      { name: 'Testemunha', value: `<@${duel.witness.discordId}>`, inline: true },
     );
-
-  if (duel.witness) {
-    embed.addFields({ name: 'Testemunha', value: `<@${duel.witness.discordId}>`, inline: true });
-  }
 
   // Acceptance status
   if (duel.status === 'PROPOSED') {

@@ -28,20 +28,22 @@ export async function handleAcceptDuel(interaction: ButtonInteraction) {
   await interaction.update({ embeds: [embed], components });
 }
 
-function buildDuelButtons(duel: { id: number; status: string; witnessId: number | null }) {
+function buildDuelButtons(duel: { id: number; status: string }) {
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
   if (duel.status === 'PROPOSED') {
-    const row = new ActionRowBuilder<ButtonBuilder>();
-    if (duel.witnessId) {
-      row.addComponents(
+    rows.push(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId(`accept-witness:${duel.id}`)
           .setLabel('Aceitar (Testemunha)')
           .setStyle(ButtonStyle.Primary),
-      );
-    }
-    rows.push(row);
+        new ButtonBuilder()
+          .setCustomId(`cancel-duel:${duel.id}`)
+          .setLabel('Cancelar')
+          .setStyle(ButtonStyle.Danger),
+      ),
+    );
   }
 
   if (duel.status === 'ACCEPTED') {
@@ -51,6 +53,10 @@ function buildDuelButtons(duel: { id: number; status: string; witnessId: number 
           .setCustomId(`start-duel:${duel.id}`)
           .setLabel('Iniciar Duelo')
           .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId(`cancel-duel:${duel.id}`)
+          .setLabel('Cancelar')
+          .setStyle(ButtonStyle.Danger),
       ),
     );
   }
