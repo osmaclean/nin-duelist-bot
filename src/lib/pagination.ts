@@ -26,10 +26,11 @@ export function buildPaginationRow(currentPage: number, totalPages: number) {
 export async function handleRankPagination(interaction: ButtonInteraction) {
   const page = parseInt(interaction.customId.replace('rank-page-', ''), 10);
   if (isNaN(page) || page < 1) return;
+  await interaction.deferUpdate();
 
   const season = await getActiveSeason();
   if (!season) {
-    await interaction.reply({ content: 'Nenhuma season ativa.', ephemeral: true });
+    await interaction.followUp({ content: 'Nenhuma season ativa.', ephemeral: true });
     return;
   }
 
@@ -38,5 +39,5 @@ export async function handleRankPagination(interaction: ButtonInteraction) {
   const embed = buildRankEmbed(season.number, result.players, result.page, result.totalPages, startRank);
   const row = buildPaginationRow(result.page, result.totalPages);
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  await interaction.editReply({ embeds: [embed], components: [row] });
 }

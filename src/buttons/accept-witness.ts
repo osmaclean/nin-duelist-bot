@@ -4,21 +4,22 @@ import { buildDuelEmbed } from '../lib/embeds';
 
 export async function handleAcceptWitness(interaction: ButtonInteraction) {
   const duelId = parseInt(interaction.customId.split(':')[1], 10);
+  await interaction.deferUpdate();
   const duel = await getDuelById(duelId);
 
   if (!duel || duel.status !== 'PROPOSED') {
-    await interaction.reply({ content: 'Este duelo não está mais disponível.', ephemeral: true });
+    await interaction.followUp({ content: 'Este duelo não está mais disponível.', ephemeral: true });
     return;
   }
 
   if (!duel.witness || interaction.user.id !== duel.witness.discordId) {
-    await interaction.reply({ content: 'Apenas a testemunha designada pode aceitar.', ephemeral: true });
+    await interaction.followUp({ content: 'Apenas a testemunha designada pode aceitar.', ephemeral: true });
     return;
   }
 
   const updated = await acceptWitness(duelId);
   if (!updated) {
-    await interaction.reply({ content: 'Erro ao aceitar como testemunha.', ephemeral: true });
+    await interaction.followUp({ content: 'Erro ao aceitar como testemunha.', ephemeral: true });
     return;
   }
 
@@ -55,5 +56,5 @@ export async function handleAcceptWitness(interaction: ButtonInteraction) {
     );
   }
 
-  await interaction.update({ embeds: [embed], components });
+  await interaction.editReply({ embeds: [embed], components });
 }

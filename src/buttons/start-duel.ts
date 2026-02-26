@@ -4,10 +4,11 @@ import { buildDuelEmbed } from '../lib/embeds';
 
 export async function handleStartDuel(interaction: ButtonInteraction) {
   const duelId = parseInt(interaction.customId.split(':')[1], 10);
+  await interaction.deferUpdate();
   const duel = await getDuelById(duelId);
 
   if (!duel || duel.status !== 'ACCEPTED') {
-    await interaction.reply({ content: 'Este duelo não pode ser iniciado.', ephemeral: true });
+    await interaction.followUp({ content: 'Este duelo não pode ser iniciado.', ephemeral: true });
     return;
   }
 
@@ -17,13 +18,13 @@ export async function handleStartDuel(interaction: ButtonInteraction) {
     interaction.user.id === duel.opponent.discordId;
 
   if (!isParticipant) {
-    await interaction.reply({ content: 'Apenas os duelistas podem iniciar o duelo.', ephemeral: true });
+    await interaction.followUp({ content: 'Apenas os duelistas podem iniciar o duelo.', ephemeral: true });
     return;
   }
 
   const updated = await startDuel(duelId);
   if (!updated) {
-    await interaction.reply({ content: 'Erro ao iniciar duelo.', ephemeral: true });
+    await interaction.followUp({ content: 'Erro ao iniciar duelo.', ephemeral: true });
     return;
   }
 
@@ -40,5 +41,5 @@ export async function handleStartDuel(interaction: ButtonInteraction) {
       .setStyle(ButtonStyle.Danger),
   );
 
-  await interaction.update({ embeds: [embed], components: [row] });
+  await interaction.editReply({ embeds: [embed], components: [row] });
 }

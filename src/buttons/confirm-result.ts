@@ -5,21 +5,22 @@ import { buildDuelEmbed } from '../lib/embeds';
 
 export async function handleConfirmResult(interaction: ButtonInteraction) {
   const duelId = parseInt(interaction.customId.split(':')[1], 10);
+  await interaction.deferUpdate();
   const duel = await getDuelById(duelId);
 
   if (!duel || duel.status !== 'AWAITING_VALIDATION') {
-    await interaction.reply({ content: 'Este duelo não está aguardando validação.', ephemeral: true });
+    await interaction.followUp({ content: 'Este duelo não está aguardando validação.', ephemeral: true });
     return;
   }
 
   if (interaction.user.id !== duel.witness.discordId) {
-    await interaction.reply({ content: 'Apenas a testemunha pode confirmar o resultado.', ephemeral: true });
+    await interaction.followUp({ content: 'Apenas a testemunha pode confirmar o resultado.', ephemeral: true });
     return;
   }
 
   const updated = await confirmResult(duelId);
   if (!updated) {
-    await interaction.reply({ content: 'Erro ao confirmar resultado.', ephemeral: true });
+    await interaction.followUp({ content: 'Erro ao confirmar resultado.', ephemeral: true });
     return;
   }
 
@@ -31,5 +32,5 @@ export async function handleConfirmResult(interaction: ButtonInteraction) {
   }
 
   const embed = buildDuelEmbed(updated);
-  await interaction.update({ embeds: [embed], components: [] });
+  await interaction.editReply({ embeds: [embed], components: [] });
 }

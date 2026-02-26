@@ -4,28 +4,29 @@ import { buildDuelEmbed } from '../lib/embeds';
 
 export async function handleAcceptDuel(interaction: ButtonInteraction) {
   const duelId = parseInt(interaction.customId.split(':')[1], 10);
+  await interaction.deferUpdate();
   const duel = await getDuelById(duelId);
 
   if (!duel || duel.status !== 'PROPOSED') {
-    await interaction.reply({ content: 'Este duelo não está mais disponível.', ephemeral: true });
+    await interaction.followUp({ content: 'Este duelo não está mais disponível.', ephemeral: true });
     return;
   }
 
   if (interaction.user.id !== duel.opponent.discordId) {
-    await interaction.reply({ content: 'Apenas o oponente pode aceitar o duelo.', ephemeral: true });
+    await interaction.followUp({ content: 'Apenas o oponente pode aceitar o duelo.', ephemeral: true });
     return;
   }
 
   const updated = await acceptOpponent(duelId);
   if (!updated) {
-    await interaction.reply({ content: 'Erro ao aceitar duelo.', ephemeral: true });
+    await interaction.followUp({ content: 'Erro ao aceitar duelo.', ephemeral: true });
     return;
   }
 
   const embed = buildDuelEmbed(updated);
   const components = buildDuelButtons(updated);
 
-  await interaction.update({ embeds: [embed], components });
+  await interaction.editReply({ embeds: [embed], components });
 }
 
 function buildDuelButtons(duel: { id: number; status: string }) {
