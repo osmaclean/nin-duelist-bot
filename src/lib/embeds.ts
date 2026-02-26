@@ -47,9 +47,7 @@ export function buildDuelEmbed(duel: DuelWithPlayers): EmbedBuilder {
   if (duel.status === 'PROPOSED') {
     const parts: string[] = [];
     parts.push(`Oponente: ${duel.opponentAccepted ? 'Aceito' : 'Pendente'}`);
-    if (duel.witness) {
-      parts.push(`Testemunha: ${duel.witnessAccepted ? 'Aceito' : 'Pendente'}`);
-    }
+    parts.push(`Testemunha: ${duel.witnessAccepted ? 'Aceito' : 'Pendente'}`);
     embed.addFields({ name: 'Aceitação', value: parts.join('\n') });
   }
 
