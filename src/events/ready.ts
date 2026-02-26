@@ -8,7 +8,7 @@ export function registerReadyEvent(client: Client) {
     console.log(`Bot online como ${c.user.tag}`);
 
     await ensureActiveSeason();
-    startExpireDuelsJob();
+    startExpireDuelsJob(c);
     startSeasonCheckJob();
   });
 }
