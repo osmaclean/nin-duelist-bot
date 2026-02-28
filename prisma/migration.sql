@@ -8,14 +8,11 @@ CREATE TYPE "DuelStatus" AS ENUM (
   'PROPOSED',
   'ACCEPTED',
   'IN_PROGRESS',
-  'RESULT_SUBMITTED',
   'AWAITING_VALIDATION',
   'CONFIRMED',
   'CANCELLED',
   'EXPIRED'
 );
-
-CREATE TYPE "DuelMode" AS ENUM ('RANKED', 'CASUAL');
 
 CREATE TYPE "DuelFormat" AS ENUM ('MD1', 'MD3');
 
@@ -59,7 +56,6 @@ CREATE TABLE "PlayerSeason" (
 CREATE TABLE "Duel" (
   "id" SERIAL PRIMARY KEY,
   "status" "DuelStatus" NOT NULL DEFAULT 'PROPOSED',
-  "mode" "DuelMode" NOT NULL,
   "format" "DuelFormat" NOT NULL,
   "challengerId" INTEGER NOT NULL,
   "opponentId" INTEGER NOT NULL,
@@ -102,3 +98,55 @@ VALUES (
   now(),
   1
 );
+
+-- =============================================
+-- Migration incremental: remover DuelMode e RESULT_SUBMITTED
+-- Rodar no SQL Editor do Supabase (se o banco já existe)
+-- =============================================
+
+-- 1. Remover coluna "mode" da tabela Duel
+ALTER TABLE "Duel" DROP COLUMN IF EXISTS "mode";
+
+-- 2. Remover enum DuelMode
+DROP TYPE IF EXISTS "DuelMode";
+
+-- 3. Remover valor RESULT_SUBMITTED do enum DuelStatus
+-- PostgreSQL não suporta ALTER TYPE ... DROP VALUE diretamente.
+-- Estratégia: renomear enum antigo, criar novo, migrar coluna, dropar antigo.
+
+-- Garante que nenhum registro usa RESULT_SUBMITTED antes de prosseguir
+UPDATE "Duel" SET "status" = 'AWAITING_VALIDATION' WHERE "status" = 'RESULT_SUBMITTED';
+
+ALTER TYPE "DuelStatus" RENAME TO "DuelStatus_old";
+
+CREATE TYPE "DuelStatus" AS ENUM (
+  'PROPOSED',
+  'ACCEPTED',
+  'IN_PROGRESS',
+  'AWAITING_VALIDATION',
+  'CONFIRMED',
+  'CANCELLED',
+  'EXPIRED'
+);
+
+ALTER TABLE "Duel"
+  ALTER COLUMN "status" DROP DEFAULT,
+  ALTER COLUMN "status" TYPE "DuelStatus" USING ("status"::text::"DuelStatus"),
+  ALTER COLUMN "status" SET DEFAULT 'PROPOSED';
+
+DROP TYPE "DuelStatus_old";
+
+-- =============================================
+-- Migration incremental: adicionar índices de performance
+-- Rodar no SQL Editor do Supabase
+-- =============================================
+
+-- Índices para hasActiveDuel (status + challengerId/opponentId)
+CREATE INDEX IF NOT EXISTS "Duel_status_challengerId_idx" ON "Duel"("status", "challengerId");
+CREATE INDEX IF NOT EXISTS "Duel_status_opponentId_idx" ON "Duel"("status", "opponentId");
+
+-- Índice para expire-duels job e canDuelToday (status + createdAt)
+CREATE INDEX IF NOT EXISTS "Duel_status_createdAt_idx" ON "Duel"("status", "createdAt");
+
+-- Índice para getLeaderboard (seasonId + ordering)
+CREATE INDEX IF NOT EXISTS "PlayerSeason_leaderboard_idx" ON "PlayerSeason"("seasonId", "points" DESC, "wins" DESC, "peakStreak" DESC);

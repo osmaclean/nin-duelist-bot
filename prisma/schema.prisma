@@ -11,15 +11,10 @@ enum DuelStatus {
   PROPOSED
   ACCEPTED
   IN_PROGRESS
-  RESULT_SUBMITTED
   AWAITING_VALIDATION
   CONFIRMED
   CANCELLED
   EXPIRED
-}
-
-enum DuelMode {
-  RANKED
 }
 
 enum DuelFormat {
@@ -70,12 +65,12 @@ model PlayerSeason {
   season Season @relation(fields: [seasonId], references: [id])
 
   @@unique([playerId, seasonId])
+  @@index([seasonId, points(sort: Desc), wins(sort: Desc), peakStreak(sort: Desc)])
 }
 
 model Duel {
   id     Int        @id @default(autoincrement())
   status DuelStatus @default(PROPOSED)
-  mode   DuelMode @default(RANKED)
   format DuelFormat
 
   challengerId Int
@@ -101,4 +96,8 @@ model Duel {
   witness    Player @relation("Witness", fields: [witnessId], references: [id])
   season     Season  @relation(fields: [seasonId], references: [id])
   winner     Player? @relation("Winner", fields: [winnerId], references: [id])
+
+  @@index([status, challengerId])
+  @@index([status, opponentId])
+  @@index([status, createdAt])
 }
