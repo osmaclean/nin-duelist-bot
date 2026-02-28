@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../lib/prisma';
 import { ensurePlayerSeason, getOrCreatePlayer, applyResult } from './player.service';
-import { POINTS_LOSS, POINTS_WIN } from '../config';
 
 vi.mock('../lib/prisma', () => ({
   prisma: {
@@ -10,8 +9,8 @@ vi.mock('../lib/prisma', () => ({
     },
     playerSeason: {
       upsert: vi.fn(),
-      update: vi.fn(),
     },
+    $executeRaw: vi.fn(),
   },
 }));
 
@@ -48,105 +47,40 @@ describe('player.service', () => {
     expect(result).toEqual(payload);
   });
 
-  it('applyResult should update winner and loser and bump peak streak when needed', async () => {
+  it('applyResult should ensure both players and execute raw updates', async () => {
     (prisma.playerSeason.upsert as any).mockResolvedValue({});
-    (prisma.playerSeason.update as any)
-      .mockResolvedValueOnce({
-        playerId: 10,
-        seasonId: 5,
-        points: 12,
-        wins: 6,
-        losses: 1,
-        streak: 4,
-        peakStreak: 3,
-      })
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({});
+    (prisma.$executeRaw as any).mockResolvedValue(1);
 
     await applyResult(10, 20, 5);
 
-    expect(prisma.playerSeason.upsert).toHaveBeenNthCalledWith(1, {
+    // Both ensures called
+    expect(prisma.playerSeason.upsert).toHaveBeenCalledTimes(2);
+    expect(prisma.playerSeason.upsert).toHaveBeenCalledWith({
       where: { playerId_seasonId: { playerId: 10, seasonId: 5 } },
       update: {},
       create: { playerId: 10, seasonId: 5 },
     });
-    expect(prisma.playerSeason.upsert).toHaveBeenNthCalledWith(2, {
+    expect(prisma.playerSeason.upsert).toHaveBeenCalledWith({
       where: { playerId_seasonId: { playerId: 20, seasonId: 5 } },
       update: {},
       create: { playerId: 20, seasonId: 5 },
     });
 
-    expect(prisma.playerSeason.update).toHaveBeenNthCalledWith(1, {
-      where: { playerId_seasonId: { playerId: 10, seasonId: 5 } },
-      data: {
-        points: { increment: POINTS_WIN },
-        wins: { increment: 1 },
-        streak: { increment: 1 },
-      },
-    });
-
-    expect(prisma.playerSeason.update).toHaveBeenNthCalledWith(2, {
-      where: { playerId_seasonId: { playerId: 10, seasonId: 5 } },
-      data: { peakStreak: 4 },
-    });
-
-    expect(prisma.playerSeason.update).toHaveBeenNthCalledWith(3, {
-      where: { playerId_seasonId: { playerId: 20, seasonId: 5 } },
-      data: {
-        points: { increment: POINTS_LOSS },
-        losses: { increment: 1 },
-        streak: 0,
-      },
-    });
+    // Two raw queries: winner + loser
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2);
   });
 
-  it('applyResult should not update peak streak when current streak does not beat peak', async () => {
+  it('applyResult should propagate $executeRaw error', async () => {
     (prisma.playerSeason.upsert as any).mockResolvedValue({});
-    (prisma.playerSeason.update as any)
-      .mockResolvedValueOnce({
-        playerId: 10,
-        seasonId: 5,
-        points: 12,
-        wins: 6,
-        losses: 1,
-        streak: 3,
-        peakStreak: 3,
-      })
-      .mockResolvedValueOnce({});
+    (prisma.$executeRaw as any).mockRejectedValue(new Error('db fail'));
 
-    await applyResult(10, 20, 5);
-
-    expect(prisma.playerSeason.update).toHaveBeenCalledTimes(2);
-    expect(prisma.playerSeason.update).toHaveBeenNthCalledWith(1, {
-      where: { playerId_seasonId: { playerId: 10, seasonId: 5 } },
-      data: {
-        points: { increment: POINTS_WIN },
-        wins: { increment: 1 },
-        streak: { increment: 1 },
-      },
-    });
-    expect(prisma.playerSeason.update).toHaveBeenNthCalledWith(2, {
-      where: { playerId_seasonId: { playerId: 20, seasonId: 5 } },
-      data: {
-        points: { increment: POINTS_LOSS },
-        losses: { increment: 1 },
-        streak: 0,
-      },
-    });
-  });
-
-  it('applyResult should propagate winner update error and stop loser update', async () => {
-    (prisma.playerSeason.upsert as any).mockResolvedValue({});
-    (prisma.playerSeason.update as any).mockRejectedValue(new Error('db fail on winner'));
-
-    await expect(applyResult(10, 20, 5)).rejects.toThrow('db fail on winner');
-    expect(prisma.playerSeason.update).toHaveBeenCalledTimes(1);
+    await expect(applyResult(10, 20, 5)).rejects.toThrow('db fail');
   });
 
   it('applyResult should propagate ensurePlayerSeason error', async () => {
     (prisma.playerSeason.upsert as any).mockRejectedValue(new Error('db fail on ensure'));
 
     await expect(applyResult(10, 20, 5)).rejects.toThrow('db fail on ensure');
-    expect(prisma.playerSeason.update).not.toHaveBeenCalled();
+    expect(prisma.$executeRaw).not.toHaveBeenCalled();
   });
 });

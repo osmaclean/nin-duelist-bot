@@ -1,4 +1,5 @@
-import { prisma } from '../lib/prisma';
+import { Prisma } from '@prisma/client';
+import { prisma, TxClient } from '../lib/prisma';
 import { POINTS_WIN, POINTS_LOSS } from '../config';
 
 export async function getOrCreatePlayer(discordId: string, username: string) {
@@ -9,43 +10,38 @@ export async function getOrCreatePlayer(discordId: string, username: string) {
   });
 }
 
-export async function ensurePlayerSeason(playerId: number, seasonId: number) {
-  return prisma.playerSeason.upsert({
+export async function ensurePlayerSeason(playerId: number, seasonId: number, tx: TxClient = prisma) {
+  return tx.playerSeason.upsert({
     where: { playerId_seasonId: { playerId, seasonId } },
     update: {},
     create: { playerId, seasonId },
   });
 }
 
-export async function applyResult(winnerId: number, loserId: number, seasonId: number) {
-  await ensurePlayerSeason(winnerId, seasonId);
-  await ensurePlayerSeason(loserId, seasonId);
+export async function applyResult(winnerId: number, loserId: number, seasonId: number, tx: TxClient = prisma) {
+  await Promise.all([
+    ensurePlayerSeason(winnerId, seasonId, tx),
+    ensurePlayerSeason(loserId, seasonId, tx),
+  ]);
 
-  // Update winner
-  const winnerSeason = await prisma.playerSeason.update({
-    where: { playerId_seasonId: { playerId: winnerId, seasonId } },
-    data: {
-      points: { increment: POINTS_WIN },
-      wins: { increment: 1 },
-      streak: { increment: 1 },
-    },
-  });
+  await Promise.all([
+    // Update winner: points, wins, streak, and peakStreak in one query
+    tx.$executeRaw(Prisma.sql`
+      UPDATE "PlayerSeason"
+      SET "points" = "points" + ${POINTS_WIN},
+          "wins" = "wins" + 1,
+          "streak" = "streak" + 1,
+          "peakStreak" = GREATEST("peakStreak", "streak" + 1)
+      WHERE "playerId" = ${winnerId} AND "seasonId" = ${seasonId}
+    `),
 
-  // Update peak streak if needed
-  if (winnerSeason.streak > winnerSeason.peakStreak) {
-    await prisma.playerSeason.update({
-      where: { playerId_seasonId: { playerId: winnerId, seasonId } },
-      data: { peakStreak: winnerSeason.streak },
-    });
-  }
-
-  // Update loser: reset streak
-  await prisma.playerSeason.update({
-    where: { playerId_seasonId: { playerId: loserId, seasonId } },
-    data: {
-      points: { increment: POINTS_LOSS },
-      losses: { increment: 1 },
-      streak: 0,
-    },
-  });
+    // Update loser: points, losses, reset streak
+    tx.$executeRaw(Prisma.sql`
+      UPDATE "PlayerSeason"
+      SET "points" = "points" + ${POINTS_LOSS},
+          "losses" = "losses" + 1,
+          "streak" = 0
+      WHERE "playerId" = ${loserId} AND "seasonId" = ${seasonId}
+    `),
+  ]);
 }

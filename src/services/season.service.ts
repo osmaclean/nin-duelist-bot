@@ -1,5 +1,9 @@
+import { DuelStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { SEASON_DURATION_DAYS } from '../config';
+import { logger } from '../lib/logger';
+
+const TERMINAL_STATUSES: DuelStatus[] = ['CONFIRMED', 'CANCELLED', 'EXPIRED'];
 
 export async function getActiveSeason() {
   return prisma.season.findFirst({ where: { active: true } });
@@ -8,7 +12,7 @@ export async function getActiveSeason() {
 export async function ensureActiveSeason() {
   const existing = await getActiveSeason();
   if (existing) {
-    console.log(`Season ${existing.number} ativa (até ${existing.endDate.toISOString()})`);
+    logger.info('Season ativa encontrada', { seasonNumber: existing.number, endDate: existing.endDate.toISOString() });
     return existing;
   }
 
@@ -23,11 +27,24 @@ export async function ensureActiveSeason() {
     data: { number: nextNumber, startDate: now, endDate, active: true },
   });
 
-  console.log(`Season ${season.number} criada (até ${season.endDate.toISOString()})`);
+  logger.info('Season criada', { seasonNumber: season.number, endDate: season.endDate.toISOString() });
   return season;
 }
 
 export async function closeSeason(seasonId: number) {
+  // Cancel all active (non-terminal) duels before closing
+  const cancelled = await prisma.duel.updateMany({
+    where: {
+      seasonId,
+      status: { notIn: TERMINAL_STATUSES },
+    },
+    data: { status: 'CANCELLED' },
+  });
+
+  if (cancelled.count > 0) {
+    logger.info('Duelos ativos cancelados no fechamento de season', { seasonId, count: cancelled.count });
+  }
+
   // Find champion (most points)
   const topPlayer = await prisma.playerSeason.findFirst({
     where: { seasonId },
@@ -39,5 +56,5 @@ export async function closeSeason(seasonId: number) {
     data: { active: false, championId: topPlayer?.playerId ?? null },
   });
 
-  console.log(`Season ${seasonId} encerrada.`);
+  logger.info('Season encerrada', { seasonId, championId: topPlayer?.playerId ?? null });
 }

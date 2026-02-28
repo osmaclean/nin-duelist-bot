@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startSeasonCheckJob } from './season-check';
 import { closeSeason, ensureActiveSeason, getActiveSeason } from '../services/season.service';
+import { logger } from '../lib/logger';
 
 vi.mock('../config', () => ({
   SEASON_CHECK_INTERVAL_MS: 1000,
@@ -10,6 +11,10 @@ vi.mock('../services/season.service', () => ({
   getActiveSeason: vi.fn(),
   closeSeason: vi.fn(),
   ensureActiveSeason: vi.fn(),
+}));
+
+vi.mock('../lib/logger', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
 describe('jobs/season-check', () => {
@@ -23,12 +28,9 @@ describe('jobs/season-check', () => {
   });
 
   it('should start job and log startup message', () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
     startSeasonCheckJob();
 
-    expect(logSpy).toHaveBeenCalledWith('Job season-check iniciado.');
-    logSpy.mockRestore();
+    expect(logger.info).toHaveBeenCalledWith('Job season-check iniciado');
   });
 
   it('should ensure season when there is no active season', async () => {
@@ -68,26 +70,22 @@ describe('jobs/season-check', () => {
     });
     (closeSeason as any).mockResolvedValue({});
     (ensureActiveSeason as any).mockResolvedValue({});
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     startSeasonCheckJob();
     await vi.advanceTimersByTimeAsync(1000);
 
-    expect(logSpy).toHaveBeenCalledWith('Season 3 expirou. Encerrando...');
+    expect(logger.info).toHaveBeenCalledWith('Season expirou, encerrando', { seasonId: 11, seasonNumber: 3 });
     expect(closeSeason).toHaveBeenCalledWith(11);
     expect(ensureActiveSeason).toHaveBeenCalledTimes(1);
-    logSpy.mockRestore();
   });
 
   it('should catch and log errors thrown by dependencies', async () => {
     const error = new Error('season fail');
     (getActiveSeason as any).mockRejectedValue(error);
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     startSeasonCheckJob();
     await vi.advanceTimersByTimeAsync(1000);
 
-    expect(errorSpy).toHaveBeenCalledWith('Erro no job season-check:', error);
-    errorSpy.mockRestore();
+    expect(logger.error).toHaveBeenCalledWith('Erro no job season-check', { error: 'Error: season fail' });
   });
 });

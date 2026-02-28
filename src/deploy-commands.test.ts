@@ -49,6 +49,10 @@ class FakeSlashCommandBuilder {
     this.data.options.push(cb(new FakeOptionBuilder()).toJSON());
     return this;
   }
+  addSubcommand(cb: (o: FakeSlashCommandBuilder) => FakeSlashCommandBuilder) {
+    this.data.options.push(cb(new FakeSlashCommandBuilder()).toJSON());
+    return this;
+  }
   toJSON() {
     return this.data;
   }
@@ -75,7 +79,8 @@ describe('deploy-commands', () => {
       DISCORD_CLIENT_ID: 'client-id',
       DISCORD_GUILD_ID: 'guild-id',
     }));
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    vi.doMock('./lib/logger', () => ({ logger: mockLogger }));
 
     await import('./deploy-commands');
     await Promise.resolve();
@@ -88,10 +93,9 @@ describe('deploy-commands', () => {
       expect.objectContaining({ body: expect.any(Array) }),
     );
     const body = put.mock.calls[0][1].body;
-    expect(body).toHaveLength(3);
-    expect(body.map((c: any) => c.name)).toEqual(['duel', 'rank', 'mvp']);
-    expect(logSpy).toHaveBeenCalledWith('Registrando slash commands...');
-    logSpy.mockRestore();
+    expect(body).toHaveLength(7);
+    expect(body.map((c: any) => c.name)).toEqual(['duel', 'rank', 'mvp', 'pending', 'history', 'profile', 'admin']);
+    expect(mockLogger.info).toHaveBeenCalledWith('Registrando slash commands');
   });
 
   it('should deploy global commands when DISCORD_GUILD_ID is empty', async () => {
@@ -114,6 +118,7 @@ describe('deploy-commands', () => {
       DISCORD_CLIENT_ID: 'client-id',
       DISCORD_GUILD_ID: '',
     }));
+    vi.doMock('./lib/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
     await import('./deploy-commands');
     await Promise.resolve();
@@ -146,12 +151,12 @@ describe('deploy-commands', () => {
       DISCORD_CLIENT_ID: 'client-id',
       DISCORD_GUILD_ID: 'guild-id',
     }));
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+    vi.doMock('./lib/logger', () => ({ logger: mockLogger }));
 
     await import('./deploy-commands');
     await Promise.resolve();
 
-    expect(errorSpy).toHaveBeenCalled();
-    errorSpy.mockRestore();
+    expect(mockLogger.error).toHaveBeenCalled();
   });
 });

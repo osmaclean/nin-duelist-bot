@@ -1,24 +1,33 @@
 import { SEASON_CHECK_INTERVAL_MS } from '../config';
 import { getActiveSeason, closeSeason, ensureActiveSeason } from '../services/season.service';
+import { logger } from '../lib/logger';
+
+async function runSeasonCycle() {
+  try {
+    const season = await getActiveSeason();
+    if (!season) {
+      await ensureActiveSeason();
+      return;
+    }
+
+    if (new Date() >= season.endDate) {
+      logger.info('Season expirou, encerrando', { seasonId: season.id, seasonNumber: season.number });
+      await closeSeason(season.id);
+      await ensureActiveSeason();
+    }
+  } catch (error) {
+    logger.error('Erro no job season-check', { error: String(error) });
+  }
+}
 
 export function startSeasonCheckJob() {
-  setInterval(async () => {
-    try {
-      const season = await getActiveSeason();
-      if (!season) {
-        await ensureActiveSeason();
-        return;
-      }
+  function scheduleNext() {
+    setTimeout(async () => {
+      await runSeasonCycle();
+      scheduleNext();
+    }, SEASON_CHECK_INTERVAL_MS);
+  }
 
-      if (new Date() >= season.endDate) {
-        console.log(`Season ${season.number} expirou. Encerrando...`);
-        await closeSeason(season.id);
-        await ensureActiveSeason();
-      }
-    } catch (error) {
-      console.error('Erro no job season-check:', error);
-    }
-  }, SEASON_CHECK_INTERVAL_MS);
-
-  console.log('Job season-check iniciado.');
+  scheduleNext();
+  logger.info('Job season-check iniciado');
 }

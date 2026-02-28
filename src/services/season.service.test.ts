@@ -3,6 +3,10 @@ import { prisma } from '../lib/prisma';
 import { closeSeason, ensureActiveSeason, getActiveSeason } from './season.service';
 import { SEASON_DURATION_DAYS } from '../config';
 
+vi.mock('../lib/logger', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
 vi.mock('../lib/prisma', () => ({
   prisma: {
     season: {
@@ -12,6 +16,9 @@ vi.mock('../lib/prisma', () => ({
     },
     playerSeason: {
       findFirst: vi.fn(),
+    },
+    duel: {
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
   },
 }));
@@ -90,6 +97,22 @@ describe('season.service', () => {
 
     const call = (prisma.season.create as any).mock.calls[0][0];
     expect(call.data.number).toBe(8);
+  });
+
+  it('closeSeason should cancel all active duels before closing', async () => {
+    (prisma.duel.updateMany as any).mockResolvedValue({ count: 3 });
+    (prisma.playerSeason.findFirst as any).mockResolvedValue({ playerId: 1 });
+    (prisma.season.update as any).mockResolvedValue({});
+
+    await closeSeason(7);
+
+    expect(prisma.duel.updateMany).toHaveBeenCalledWith({
+      where: {
+        seasonId: 7,
+        status: { notIn: ['CONFIRMED', 'CANCELLED', 'EXPIRED'] },
+      },
+      data: { status: 'CANCELLED' },
+    });
   });
 
   it('closeSeason should set championId with top player when ranking is not empty', async () => {

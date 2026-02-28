@@ -27,8 +27,21 @@ vi.mock('../lib/prisma', () => ({
   },
 }));
 
+vi.mock('../services/duel.service', () => ({
+  DUEL_INCLUDE: {
+    challenger: true,
+    opponent: true,
+    witness: true,
+    winner: true,
+  },
+}));
+
 vi.mock('../lib/embeds', () => ({
   buildDuelEmbed: vi.fn(),
+}));
+
+vi.mock('../lib/logger', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
 function makeDuel(id: number, extra: Record<string, unknown> = {}) {
@@ -56,13 +69,11 @@ describe('jobs/expire-duels', () => {
     vi.useRealTimers();
   });
 
-  it('should start job and log startup message', () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
+  it('should start job and log startup message', async () => {
     startExpireDuelsJob({ channels: { fetch: vi.fn() } } as any);
 
-    expect(logSpy).toHaveBeenCalledWith('Job expire-duels iniciado.');
-    logSpy.mockRestore();
+    const { logger } = await import('../lib/logger');
+    expect(logger.info).toHaveBeenCalledWith('Job expire-duels iniciado');
   });
 
   it('should do nothing when no duels are expiring', async () => {
@@ -143,12 +154,26 @@ describe('jobs/expire-duels', () => {
   it('should catch and log outer job errors', async () => {
     const error = new Error('db error');
     (prisma.duel.findMany as any).mockRejectedValue(error);
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     startExpireDuelsJob({ channels: { fetch: vi.fn() } } as any);
     await vi.advanceTimersByTimeAsync(1000);
 
-    expect(errorSpy).toHaveBeenCalledWith('Erro no job expire-duels:', error);
-    errorSpy.mockRestore();
+    const { logger } = await import('../lib/logger');
+    expect(logger.error).toHaveBeenCalledWith('Erro no job expire-duels', { error: 'Error: db error' });
+  });
+
+  it('should schedule next cycle after current completes', async () => {
+    (prisma.duel.findMany as any).mockResolvedValue([]);
+    const client = { channels: { fetch: vi.fn() } };
+
+    startExpireDuelsJob(client as any);
+
+    // First cycle
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(prisma.duel.findMany).toHaveBeenCalledTimes(1);
+
+    // Second cycle
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(prisma.duel.findMany).toHaveBeenCalledTimes(2);
   });
 });

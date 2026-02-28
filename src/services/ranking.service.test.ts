@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../lib/prisma';
-import { getLeaderboard, getTopPlayers } from './ranking.service';
+import { getLeaderboard, getTopPlayers, getPlayerRank } from './ranking.service';
 import { RANK_PAGE_SIZE } from '../config';
 
 vi.mock('../lib/prisma', () => ({
   prisma: {
     playerSeason: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
       count: vi.fn(),
     },
   },
@@ -93,5 +94,31 @@ describe('ranking.service', () => {
       include: { player: true },
       take: 5,
     });
+  });
+
+  it('getPlayerRank should return null when player has no PlayerSeason', async () => {
+    (prisma.playerSeason.findUnique as any).mockResolvedValue(null);
+
+    const rank = await getPlayerRank(99, 1);
+
+    expect(rank).toBeNull();
+  });
+
+  it('getPlayerRank should return 1 when player is top ranked', async () => {
+    (prisma.playerSeason.findUnique as any).mockResolvedValue({ points: 10, wins: 8, peakStreak: 5 });
+    (prisma.playerSeason.count as any).mockResolvedValue(0); // nobody ahead
+
+    const rank = await getPlayerRank(1, 5);
+
+    expect(rank).toBe(1);
+  });
+
+  it('getPlayerRank should return correct position based on players ahead', async () => {
+    (prisma.playerSeason.findUnique as any).mockResolvedValue({ points: 5, wins: 3, peakStreak: 2 });
+    (prisma.playerSeason.count as any).mockResolvedValue(4); // 4 players ahead
+
+    const rank = await getPlayerRank(10, 5);
+
+    expect(rank).toBe(5);
   });
 });
