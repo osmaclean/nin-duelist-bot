@@ -4,7 +4,7 @@ describe('index', () => {
   it('should bootstrap client, register events and login', async () => {
     vi.resetModules();
 
-    const clientInstance = { login: vi.fn() };
+    const clientInstance = { login: vi.fn(), destroy: vi.fn() };
     const Client = vi.fn(() => clientInstance);
     const registerReadyEvent = vi.fn();
     const registerInteractionEvent = vi.fn();
@@ -21,6 +21,12 @@ describe('index', () => {
     }));
     vi.doMock('./events/interactionCreate', () => ({
       registerInteractionEvent,
+    }));
+    vi.doMock('./lib/prisma', () => ({
+      prisma: { $disconnect: vi.fn() },
+    }));
+    vi.doMock('./lib/logger', () => ({
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     }));
 
     await import('./index');

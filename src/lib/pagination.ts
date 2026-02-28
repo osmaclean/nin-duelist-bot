@@ -24,9 +24,13 @@ export function buildPaginationRow(currentPage: number, totalPages: number) {
 }
 
 export async function handleRankPagination(interaction: ButtonInteraction) {
-  const page = parseInt(interaction.customId.replace('rank-page-', ''), 10);
-  if (isNaN(page) || page < 1) return;
   await interaction.deferUpdate();
+
+  const page = parseInt(interaction.customId.replace('rank-page-', ''), 10);
+  if (isNaN(page) || page < 1) {
+    await interaction.followUp({ content: 'Página inválida.', ephemeral: true });
+    return;
+  }
 
   const season = await getActiveSeason();
   if (!season) {
@@ -35,9 +39,11 @@ export async function handleRankPagination(interaction: ButtonInteraction) {
   }
 
   const result = await getLeaderboard(season.id, page);
-  const startRank = (page - 1) * RANK_PAGE_SIZE + 1;
-  const embed = buildRankEmbed(season.number, result.players, result.page, result.totalPages, startRank);
-  const row = buildPaginationRow(result.page, result.totalPages);
+
+  const safePage = Math.min(page, result.totalPages || 1);
+  const startRank = (safePage - 1) * RANK_PAGE_SIZE + 1;
+  const embed = buildRankEmbed(season.number, result.players, safePage, result.totalPages, startRank);
+  const row = buildPaginationRow(safePage, result.totalPages);
 
   await interaction.editReply({ embeds: [embed], components: [row] });
 }

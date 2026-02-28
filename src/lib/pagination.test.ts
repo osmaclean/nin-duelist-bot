@@ -29,19 +29,21 @@ describe('lib/pagination', () => {
     expect(lastButtons[1].disabled).toBe(true);
   });
 
-  it('handleRankPagination should no-op on invalid page id', async () => {
+  it('handleRankPagination should followUp with error on invalid page id', async () => {
     const interaction = {
       customId: 'rank-page-abc',
-      deferUpdate: vi.fn(),
-      reply: vi.fn(),
-      followUp: vi.fn(),
-      update: vi.fn(),
+      deferUpdate: vi.fn().mockResolvedValue(undefined),
+      followUp: vi.fn().mockResolvedValue(undefined),
       editReply: vi.fn(),
     } as any;
 
     await handleRankPagination(interaction);
 
-    expect(interaction.deferUpdate).not.toHaveBeenCalled();
+    expect(interaction.deferUpdate).toHaveBeenCalledTimes(1);
+    expect(interaction.followUp).toHaveBeenCalledWith({
+      content: 'Página inválida.',
+      ephemeral: true,
+    });
     expect(getActiveSeason).not.toHaveBeenCalled();
   });
 

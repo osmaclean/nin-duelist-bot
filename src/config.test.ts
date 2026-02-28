@@ -6,6 +6,7 @@ describe('config', () => {
     process.env.DISCORD_TOKEN = 'token-x';
     process.env.DISCORD_CLIENT_ID = 'client-x';
     process.env.DISCORD_GUILD_ID = 'guild-x';
+    process.env.DATABASE_URL = 'postgresql://localhost/test';
 
     const mod = await import('./config');
 
@@ -19,5 +20,35 @@ describe('config', () => {
     expect(mod.RANK_PAGE_SIZE).toBe(20);
     expect(mod.POINTS_WIN).toBe(1);
     expect(mod.POINTS_LOSS).toBe(-1);
+  });
+
+  it('should throw if DISCORD_TOKEN is missing', async () => {
+    vi.resetModules();
+    delete process.env.DISCORD_TOKEN;
+    process.env.DISCORD_CLIENT_ID = 'client-x';
+    process.env.DATABASE_URL = 'postgresql://localhost/test';
+
+    await expect(import('./config')).rejects.toThrow('DISCORD_TOKEN');
+  });
+
+  it('should throw if DATABASE_URL is missing', async () => {
+    vi.resetModules();
+    process.env.DISCORD_TOKEN = 'token-x';
+    process.env.DISCORD_CLIENT_ID = 'client-x';
+    delete process.env.DATABASE_URL;
+
+    await expect(import('./config')).rejects.toThrow('DATABASE_URL');
+  });
+
+  it('should default DISCORD_GUILD_ID to empty string when not set', async () => {
+    vi.resetModules();
+    process.env.DISCORD_TOKEN = 'token-x';
+    process.env.DISCORD_CLIENT_ID = 'client-x';
+    delete process.env.DISCORD_GUILD_ID;
+    process.env.DATABASE_URL = 'postgresql://localhost/test';
+
+    const mod = await import('./config');
+
+    expect(mod.DISCORD_GUILD_ID).toBe('');
   });
 });
