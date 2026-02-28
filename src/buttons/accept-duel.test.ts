@@ -27,6 +27,19 @@ describe('buttons/accept-duel', () => {
     vi.clearAllMocks();
   });
 
+  it('should reject when customId has invalid duelId (NaN)', async () => {
+    const i = interaction('accept-duel:abc');
+
+    await handleAcceptDuel(i);
+
+    expect(i.deferUpdate).toHaveBeenCalledTimes(1);
+    expect(i.followUp).toHaveBeenCalledWith({
+      content: 'Interação inválida.',
+      ephemeral: true,
+    });
+    expect(getDuelById).not.toHaveBeenCalled();
+  });
+
   it('should reject when duel does not exist', async () => {
     (getDuelById as any).mockResolvedValue(null);
     const i = interaction();
@@ -80,7 +93,7 @@ describe('buttons/accept-duel', () => {
     await handleAcceptDuel(i);
 
     expect(i.followUp).toHaveBeenCalledWith({
-      content: 'Erro ao aceitar duelo.',
+      content: 'Este duelo não está mais disponível.',
       ephemeral: true,
     });
   });

@@ -83,7 +83,7 @@ describe('buttons/reject-result', () => {
     await handleRejectResult(i);
 
     expect(i.followUp).toHaveBeenCalledWith({
-      content: 'Erro ao rejeitar resultado.',
+      content: 'Este duelo não está aguardando validação.',
       ephemeral: true,
     });
   });

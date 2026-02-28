@@ -34,7 +34,7 @@ describe('buttons/cancel-duel', () => {
     await handleCancelDuel(i);
 
     expect(i.followUp).toHaveBeenCalledWith({
-      content: 'Duelo não encontrado.',
+      content: 'Este duelo não pode mais ser cancelado.',
       ephemeral: true,
     });
   });
@@ -89,7 +89,7 @@ describe('buttons/cancel-duel', () => {
     await handleCancelDuel(i);
 
     expect(i.followUp).toHaveBeenCalledWith({
-      content: 'Erro ao cancelar duelo.',
+      content: 'Este duelo não pode mais ser cancelado.',
       ephemeral: true,
     });
   });

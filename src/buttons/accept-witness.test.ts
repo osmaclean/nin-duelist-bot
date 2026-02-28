@@ -67,7 +67,7 @@ describe('buttons/accept-witness', () => {
     await handleAcceptWitness(i);
 
     expect(i.followUp).toHaveBeenCalledWith({
-      content: 'Erro ao aceitar como testemunha.',
+      content: 'Este duelo não está mais disponível.',
       ephemeral: true,
     });
   });
@@ -92,7 +92,7 @@ describe('buttons/accept-witness', () => {
     expect(payload.components).toHaveLength(1);
   });
 
-  it('should show no buttons when still PROPOSED and opponent already accepted', async () => {
+  it('should show cancel button when still PROPOSED and witness not yet accepted', async () => {
     (getDuelById as any).mockResolvedValue({
       id: 10,
       status: 'PROPOSED',
@@ -102,6 +102,7 @@ describe('buttons/accept-witness', () => {
       id: 10,
       status: 'PROPOSED',
       opponentAccepted: true,
+      witnessAccepted: false,
     });
     (buildDuelEmbed as any).mockReturnValue({ embed: true });
     const i = interaction();
@@ -109,7 +110,7 @@ describe('buttons/accept-witness', () => {
     await handleAcceptWitness(i);
 
     const payload = i.editReply.mock.calls[0][0];
-    expect(payload.components).toEqual([]);
+    expect(payload.components).toHaveLength(1);
   });
 
   it('should show start-duel + cancel when ACCEPTED', async () => {

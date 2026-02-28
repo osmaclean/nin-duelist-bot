@@ -9,6 +9,12 @@ import { getDuelById } from '../services/duel.service';
 
 export async function handleSubmitResult(interaction: ButtonInteraction) {
   const duelId = parseInt(interaction.customId.split(':')[1], 10);
+
+  if (isNaN(duelId)) {
+    await interaction.reply({ content: 'Interação inválida.', ephemeral: true });
+    return;
+  }
+
   const duel = await getDuelById(duelId);
 
   if (!duel || duel.status !== 'IN_PROGRESS') {

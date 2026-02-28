@@ -1,18 +1,11 @@
 import { EmbedBuilder, Colors } from 'discord.js';
-import { Duel, Player, DuelStatus, DuelFormat } from '@prisma/client';
-
-type DuelWithPlayers = Duel & {
-  challenger: Player;
-  opponent: Player;
-  witness: Player;
-  winner?: Player | null;
-};
+import { Player, DuelStatus } from '@prisma/client';
+import { DuelWithPlayers } from '../services/duel.service';
 
 const STATUS_LABELS: Record<DuelStatus, string> = {
   PROPOSED: 'Aguardando aceitação',
   ACCEPTED: 'Aceito — Pronto para iniciar',
   IN_PROGRESS: 'Em andamento',
-  RESULT_SUBMITTED: 'Resultado enviado',
   AWAITING_VALIDATION: 'Aguardando validação da testemunha',
   CONFIRMED: 'Confirmado',
   CANCELLED: 'Cancelado',
@@ -23,7 +16,6 @@ const STATUS_COLORS: Record<DuelStatus, number> = {
   PROPOSED: Colors.Yellow,
   ACCEPTED: Colors.Blue,
   IN_PROGRESS: Colors.Orange,
-  RESULT_SUBMITTED: Colors.Purple,
   AWAITING_VALIDATION: Colors.Purple,
   CONFIRMED: Colors.Green,
   CANCELLED: Colors.Red,

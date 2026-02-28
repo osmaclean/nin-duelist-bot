@@ -69,7 +69,7 @@ describe('buttons/start-duel', () => {
     await handleStartDuel(i);
 
     expect(i.followUp).toHaveBeenCalledWith({
-      content: 'Erro ao iniciar duelo.',
+      content: 'Este duelo não pode ser iniciado.',
       ephemeral: true,
     });
   });

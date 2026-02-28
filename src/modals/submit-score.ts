@@ -1,9 +1,17 @@
-import { ModalSubmitInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { ModalSubmitInteraction } from 'discord.js';
 import { getDuelById, submitResult } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
+import { buildDuelComponents } from '../lib/components';
+import { notifyWitnessValidation } from '../lib/notifications';
 
 export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction) {
   const duelId = parseInt(interaction.customId.split(':')[1], 10);
+
+  if (isNaN(duelId)) {
+    await interaction.reply({ content: 'Interação inválida.', ephemeral: true });
+    return;
+  }
+
   const duel = await getDuelById(duelId);
 
   if (!duel || duel.status !== 'IN_PROGRESS') {
@@ -58,22 +66,11 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
   }
 
   const embed = buildDuelEmbed(updated);
-  const components: ActionRowBuilder<ButtonBuilder>[] = [];
-
-  if (updated.status === 'AWAITING_VALIDATION') {
-    components.push(
-      new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`confirm-result:${duel.id}`)
-          .setLabel('Confirmar Resultado')
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId(`reject-result:${duel.id}`)
-          .setLabel('Rejeitar Resultado')
-          .setStyle(ButtonStyle.Danger),
-      ),
-    );
-  }
+  const components = buildDuelComponents(updated);
 
   await interaction.editReply({ embeds: [embed], components });
+
+  if (updated.status === 'AWAITING_VALIDATION') {
+    notifyWitnessValidation(interaction.client, updated).catch(() => {});
+  }
 }

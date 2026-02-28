@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleSubmitScoreModal } from './submit-score';
 import { getDuelById, submitResult } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
+import { notifyWitnessValidation } from '../lib/notifications';
 
 vi.mock('../services/duel.service', () => ({
   getDuelById: vi.fn(),
@@ -12,9 +13,14 @@ vi.mock('../lib/embeds', () => ({
   buildDuelEmbed: vi.fn(),
 }));
 
+vi.mock('../lib/notifications', () => ({
+  notifyWitnessValidation: vi.fn().mockResolvedValue(undefined),
+}));
+
 function modalInteraction(values: Record<string, string>) {
   return {
     customId: 'submit-score:10',
+    client: { users: { fetch: vi.fn() }, channels: { fetch: vi.fn() } },
     fields: {
       getTextInputValue: vi.fn((k: string) => values[k]),
     },
@@ -41,6 +47,23 @@ function duelBase(extra: Record<string, unknown> = {}) {
 describe('modals/submit-score', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('should reject when customId has invalid duelId (NaN)', async () => {
+    const i = modalInteraction({
+      winner: '111',
+      'score-winner': '2',
+      'score-loser': '1',
+    });
+    i.customId = 'submit-score:abc';
+
+    await handleSubmitScoreModal(i);
+
+    expect(i.reply).toHaveBeenCalledWith({
+      content: 'Interação inválida.',
+      ephemeral: true,
+    });
+    expect(getDuelById).not.toHaveBeenCalled();
   });
 
   it('should reject when duel is not in progress', async () => {
@@ -180,7 +203,7 @@ describe('modals/submit-score', () => {
     await handleSubmitScoreModal(i);
 
     const payload = i.editReply.mock.calls[0][0];
-    expect(payload.components).toEqual([]);
+    expect(payload.components).toHaveLength(1);
   });
 
   it('should accept valid MD1 score and resolve winner id correctly', async () => {
@@ -204,5 +227,43 @@ describe('modals/submit-score', () => {
 
     expect(submitResult).toHaveBeenCalledWith(10, 1, 1, 0);
     expect(i.editReply).toHaveBeenCalledTimes(1);
+  });
+
+  it('should notify witness when status is AWAITING_VALIDATION', async () => {
+    const updated = {
+      id: 10,
+      status: 'AWAITING_VALIDATION',
+      witness: { discordId: 'w1' },
+    };
+    (getDuelById as any).mockResolvedValue(duelBase());
+    (submitResult as any).mockResolvedValue(updated);
+    (buildDuelEmbed as any).mockReturnValue({ embed: true });
+    const i = modalInteraction({
+      winner: '111',
+      'score-winner': '2',
+      'score-loser': '1',
+    });
+
+    await handleSubmitScoreModal(i);
+
+    expect(notifyWitnessValidation).toHaveBeenCalledWith(i.client, updated);
+  });
+
+  it('should not notify witness when status is not AWAITING_VALIDATION', async () => {
+    (getDuelById as any).mockResolvedValue(duelBase());
+    (submitResult as any).mockResolvedValue({
+      id: 10,
+      status: 'IN_PROGRESS',
+    });
+    (buildDuelEmbed as any).mockReturnValue({ embed: true });
+    const i = modalInteraction({
+      winner: '111',
+      'score-winner': '2',
+      'score-loser': '1',
+    });
+
+    await handleSubmitScoreModal(i);
+
+    expect(notifyWitnessValidation).not.toHaveBeenCalled();
   });
 });

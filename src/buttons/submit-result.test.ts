@@ -20,6 +20,18 @@ describe('buttons/submit-result', () => {
     vi.clearAllMocks();
   });
 
+  it('should reject when customId has invalid duelId (NaN)', async () => {
+    const i = interaction('submit-result:abc');
+
+    await handleSubmitResult(i);
+
+    expect(i.reply).toHaveBeenCalledWith({
+      content: 'Interação inválida.',
+      ephemeral: true,
+    });
+    expect(getDuelById).not.toHaveBeenCalled();
+  });
+
   it('should reject when duel is not IN_PROGRESS', async () => {
     (getDuelById as any).mockResolvedValue({ status: 'ACCEPTED' });
     const i = interaction();

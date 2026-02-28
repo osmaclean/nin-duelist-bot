@@ -1,37 +1,12 @@
-import { ButtonInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { getDuelById, rejectResult } from '../services/duel.service';
-import { buildDuelEmbed } from '../lib/embeds';
+import { createDuelButtonHandler } from './handler';
+import { rejectResult } from '../services/duel.service';
 
-export async function handleRejectResult(interaction: ButtonInteraction) {
-  const duelId = parseInt(interaction.customId.split(':')[1], 10);
-  await interaction.deferUpdate();
-  const duel = await getDuelById(duelId);
-
-  if (!duel || duel.status !== 'AWAITING_VALIDATION') {
-    await interaction.followUp({ content: 'Este duelo não está aguardando validação.', ephemeral: true });
-    return;
-  }
-
-  if (!duel.witness || interaction.user.id !== duel.witness.discordId) {
-    await interaction.followUp({ content: 'Apenas a testemunha pode rejeitar o resultado.', ephemeral: true });
-    return;
-  }
-
-  const updated = await rejectResult(duelId);
-  if (!updated) {
-    await interaction.followUp({ content: 'Erro ao rejeitar resultado.', ephemeral: true });
-    return;
-  }
-
-  const embed = buildDuelEmbed(updated);
-
-  // Back to IN_PROGRESS — show submit button again
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`submit-result:${duel.id}`)
-      .setLabel('Enviar Resultado')
-      .setStyle(ButtonStyle.Primary),
-  );
-
-  await interaction.editReply({ embeds: [embed], components: [row] });
-}
+export const handleRejectResult = createDuelButtonHandler({
+  expectedStatus: 'AWAITING_VALIDATION',
+  permissionCheck: (interaction, duel) =>
+    !duel.witness || interaction.user.id !== duel.witness.discordId
+      ? 'Apenas a testemunha pode rejeitar o resultado.'
+      : null,
+  execute: (duelId) => rejectResult(duelId),
+  errorMessage: 'Este duelo não está aguardando validação.',
+});
