@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../lib/prisma';
+import { applyResult } from './player.service';
 import {
   acceptOpponent,
   acceptWitness,
   cancelDuel,
+  confirmAndApplyResult,
   confirmResult,
   createDuel,
   expireDuel,
@@ -15,6 +17,10 @@ import {
   submitResult,
 } from './duel.service';
 
+vi.mock('./player.service', () => ({
+  applyResult: vi.fn(),
+}));
+
 vi.mock('../lib/prisma', () => ({
   prisma: {
     duel: {
@@ -24,6 +30,7 @@ vi.mock('../lib/prisma', () => ({
       update: vi.fn(),
       count: vi.fn(),
     },
+    $transaction: vi.fn((cb: (tx: unknown) => Promise<unknown>) => cb(prisma)),
   },
 }));
 
@@ -73,7 +80,6 @@ describe('duel.service', () => {
         opponentId: 2,
         witnessId: 3,
         seasonId: 10,
-        mode: 'RANKED',
         format: 'MD3',
         channelId: '123',
       },
@@ -208,29 +214,19 @@ describe('duel.service', () => {
     expect(result?.status).toBe('IN_PROGRESS');
   });
 
-  it('submitResult should return null when duel does not exist', async () => {
-    (prisma.duel.findUnique as any).mockResolvedValue(null);
-
-    const result = await submitResult(duelId, 1, 2, 1);
-
-    expect(result).toBeNull();
-    expect(prisma.duel.updateMany).not.toHaveBeenCalled();
-  });
-
   it('submitResult should return null when duel is not IN_PROGRESS', async () => {
-    (prisma.duel.findUnique as any).mockResolvedValue(mockDuel('ACCEPTED'));
+    (prisma.duel.updateMany as any).mockResolvedValue({ count: 0 });
 
     const result = await submitResult(duelId, 1, 2, 1);
 
     expect(result).toBeNull();
-    expect(prisma.duel.updateMany).not.toHaveBeenCalled();
   });
 
   it('submitResult should move duel to AWAITING_VALIDATION for IN_PROGRESS duel', async () => {
-    (prisma.duel.findUnique as any)
-      .mockResolvedValueOnce(mockDuel('IN_PROGRESS'))
-      .mockResolvedValueOnce(mockDuel('AWAITING_VALIDATION', { winnerId: 1, scoreWinner: 2, scoreLoser: 1 }));
     (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
+    (prisma.duel.findUnique as any).mockResolvedValue(
+      mockDuel('AWAITING_VALIDATION', { winnerId: 1, scoreWinner: 2, scoreLoser: 1 }),
+    );
 
     const result = await submitResult(duelId, 1, 2, 1);
 
@@ -346,5 +342,50 @@ describe('duel.service', () => {
     });
     expect(first).toBe(true);
     expect(second).toBe(false);
+  });
+
+  it('confirmAndApplyResult should return null when confirmResult fails', async () => {
+    (prisma.duel.updateMany as any).mockResolvedValue({ count: 0 });
+
+    const result = await confirmAndApplyResult(duelId);
+
+    expect(result).toBeNull();
+    expect(applyResult).not.toHaveBeenCalled();
+  });
+
+  it('confirmAndApplyResult should confirm and apply result with winner', async () => {
+    (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
+    (prisma.duel.findUnique as any).mockResolvedValue(
+      mockDuel('CONFIRMED', { winnerId: 1, challengerId: 1, opponentId: 2, seasonId: 10 }),
+    );
+
+    const result = await confirmAndApplyResult(duelId);
+
+    expect(result?.status).toBe('CONFIRMED');
+    expect(applyResult).toHaveBeenCalledWith(1, 2, 10, expect.anything());
+  });
+
+  it('confirmAndApplyResult should confirm without applying when no winner', async () => {
+    (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
+    (prisma.duel.findUnique as any).mockResolvedValue(
+      mockDuel('CONFIRMED', { winnerId: null, challengerId: 1, opponentId: 2, seasonId: 10 }),
+    );
+
+    const result = await confirmAndApplyResult(duelId);
+
+    expect(result?.status).toBe('CONFIRMED');
+    expect(applyResult).not.toHaveBeenCalled();
+  });
+
+  it('confirmAndApplyResult should compute loserId when winner is opponent', async () => {
+    (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
+    (prisma.duel.findUnique as any).mockResolvedValue(
+      mockDuel('CONFIRMED', { winnerId: 2, challengerId: 1, opponentId: 2, seasonId: 10 }),
+    );
+
+    const result = await confirmAndApplyResult(duelId);
+
+    expect(result?.status).toBe('CONFIRMED');
+    expect(applyResult).toHaveBeenCalledWith(2, 1, 10, expect.anything());
   });
 });

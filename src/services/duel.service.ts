@@ -1,12 +1,15 @@
-import { DuelStatus, DuelFormat } from '@prisma/client';
-import { prisma } from '../lib/prisma';
+import { DuelStatus, DuelFormat, Prisma } from '@prisma/client';
+import { prisma, TxClient } from '../lib/prisma';
+import { applyResult } from './player.service';
 
-const DUEL_INCLUDE = {
+export const DUEL_INCLUDE = {
   challenger: true,
   opponent: true,
   witness: true,
   winner: true,
 } as const;
+
+export type DuelWithPlayers = Prisma.DuelGetPayload<{ include: typeof DUEL_INCLUDE }>;
 
 export async function createDuel(params: {
   challengerId: number;
@@ -22,7 +25,6 @@ export async function createDuel(params: {
       opponentId: params.opponentId,
       witnessId: params.witnessId,
       seasonId: params.seasonId,
-      mode: 'RANKED',
       format: params.format,
       channelId: params.channelId,
     },
@@ -42,10 +44,11 @@ async function transitionDuel(
   id: number,
   expectedStatus: DuelStatus | DuelStatus[],
   data: Record<string, unknown>,
+  tx: TxClient = prisma,
 ) {
   const statusFilter = Array.isArray(expectedStatus) ? { in: expectedStatus } : expectedStatus;
 
-  const result = await prisma.duel.updateMany({
+  const result = await tx.duel.updateMany({
     where: { id, status: statusFilter },
     data,
   });
@@ -54,7 +57,7 @@ async function transitionDuel(
     return null; // Status already changed — race condition guard
   }
 
-  return prisma.duel.findUnique({ where: { id }, include: DUEL_INCLUDE });
+  return tx.duel.findUnique({ where: { id }, include: DUEL_INCLUDE });
 }
 
 export async function setMessageId(duelId: number, messageId: string) {
@@ -105,9 +108,6 @@ export async function submitResult(
   scoreWinner: number,
   scoreLoser: number,
 ) {
-  const duel = await prisma.duel.findUnique({ where: { id: duelId } });
-  if (!duel || duel.status !== 'IN_PROGRESS') return null;
-
   return transitionDuel(duelId, 'IN_PROGRESS', {
     status: 'AWAITING_VALIDATION',
     winnerId,
@@ -116,8 +116,23 @@ export async function submitResult(
   });
 }
 
-export async function confirmResult(duelId: number) {
-  return transitionDuel(duelId, 'AWAITING_VALIDATION', { status: 'CONFIRMED' });
+export async function confirmResult(duelId: number, tx: TxClient = prisma) {
+  return transitionDuel(duelId, 'AWAITING_VALIDATION', { status: 'CONFIRMED' }, tx);
+}
+
+export async function confirmAndApplyResult(duelId: number) {
+  return prisma.$transaction(async (tx) => {
+    const confirmed = await confirmResult(duelId, tx);
+    if (!confirmed) return null;
+
+    if (confirmed.winnerId) {
+      const loserId =
+        confirmed.winnerId === confirmed.challengerId ? confirmed.opponentId : confirmed.challengerId;
+      await applyResult(confirmed.winnerId, loserId, confirmed.seasonId, tx);
+    }
+
+    return confirmed;
+  });
 }
 
 export async function rejectResult(duelId: number) {

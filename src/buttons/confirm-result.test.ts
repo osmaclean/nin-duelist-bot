@@ -1,16 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleConfirmResult } from './confirm-result';
-import { confirmResult, getDuelById } from '../services/duel.service';
-import { applyResult } from '../services/player.service';
+import { confirmAndApplyResult, getDuelById } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
 
 vi.mock('../services/duel.service', () => ({
   getDuelById: vi.fn(),
-  confirmResult: vi.fn(),
-}));
-
-vi.mock('../services/player.service', () => ({
-  applyResult: vi.fn(),
+  confirmAndApplyResult: vi.fn(),
 }));
 
 vi.mock('../lib/embeds', () => ({
@@ -30,6 +25,19 @@ function interaction(customId = 'confirm-result:10', userId = 'u3') {
 describe('buttons/confirm-result', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('should reject when customId has invalid duelId (NaN)', async () => {
+    const i = interaction('confirm-result:abc');
+
+    await handleConfirmResult(i);
+
+    expect(i.deferUpdate).toHaveBeenCalledTimes(1);
+    expect(i.followUp).toHaveBeenCalledWith({
+      content: 'Interação inválida.',
+      ephemeral: true,
+    });
+    expect(getDuelById).not.toHaveBeenCalled();
   });
 
   it('should reject when duel is not awaiting validation', async () => {
@@ -60,13 +68,13 @@ describe('buttons/confirm-result', () => {
     });
   });
 
-  it('should return error when confirmResult fails', async () => {
+  it('should return error when confirmAndApplyResult fails', async () => {
     (getDuelById as any).mockResolvedValue({
       id: 10,
       status: 'AWAITING_VALIDATION',
       witness: { discordId: 'u3' },
     });
-    (confirmResult as any).mockResolvedValue(null);
+    (confirmAndApplyResult as any).mockResolvedValue(null);
     const i = interaction();
 
     await handleConfirmResult(i);
@@ -77,13 +85,13 @@ describe('buttons/confirm-result', () => {
     });
   });
 
-  it('should confirm and apply result when winner is challenger', async () => {
+  it('should confirm result and update embed', async () => {
     (getDuelById as any).mockResolvedValue({
       id: 10,
       status: 'AWAITING_VALIDATION',
       witness: { discordId: 'u3' },
     });
-    (confirmResult as any).mockResolvedValue({
+    (confirmAndApplyResult as any).mockResolvedValue({
       id: 10,
       status: 'CONFIRMED',
       winnerId: 1,
@@ -96,52 +104,7 @@ describe('buttons/confirm-result', () => {
 
     await handleConfirmResult(i);
 
-    expect(applyResult).toHaveBeenCalledWith(1, 2, 5);
+    expect(confirmAndApplyResult).toHaveBeenCalledWith(10);
     expect(i.editReply).toHaveBeenCalledWith({ embeds: [{ embed: true }], components: [] });
-  });
-
-  it('should confirm and apply result when winner is opponent', async () => {
-    (getDuelById as any).mockResolvedValue({
-      id: 10,
-      status: 'AWAITING_VALIDATION',
-      witness: { discordId: 'u3' },
-    });
-    (confirmResult as any).mockResolvedValue({
-      id: 10,
-      status: 'CONFIRMED',
-      winnerId: 2,
-      challengerId: 1,
-      opponentId: 2,
-      seasonId: 5,
-    });
-    (buildDuelEmbed as any).mockReturnValue({ embed: true });
-    const i = interaction();
-
-    await handleConfirmResult(i);
-
-    expect(applyResult).toHaveBeenCalledWith(2, 1, 5);
-  });
-
-  it('should not apply result when winnerId is missing', async () => {
-    (getDuelById as any).mockResolvedValue({
-      id: 10,
-      status: 'AWAITING_VALIDATION',
-      witness: { discordId: 'u3' },
-    });
-    (confirmResult as any).mockResolvedValue({
-      id: 10,
-      status: 'CONFIRMED',
-      winnerId: null,
-      challengerId: 1,
-      opponentId: 2,
-      seasonId: 5,
-    });
-    (buildDuelEmbed as any).mockReturnValue({ embed: true });
-    const i = interaction();
-
-    await handleConfirmResult(i);
-
-    expect(applyResult).not.toHaveBeenCalled();
-    expect(i.editReply).toHaveBeenCalledTimes(1);
   });
 });
