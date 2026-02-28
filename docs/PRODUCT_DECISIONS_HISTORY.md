@@ -31,15 +31,25 @@
 - Rankings de win rate devem exigir um número mínimo de partidas.
 - A saída do comando deve ter paginação/limites para evitar estouro de mensagem no Discord.
 
-## Próximos comandos de produto (roadmap)
-1. `/profile @user`
-  - Visão completa do jogador na season atual e, opcionalmente, no histórico geral.
+## Status de implementação
+
+### Implementados
+- `/history [@player]` — v1 com stats + últimos 10 duelos (sem filtros avançados ainda)
+- `/profile [@player]` — Card compacto com ranking, stats, streak e seasons jogadas
+
+### Próximos comandos de produto (roadmap)
+1. ~~`/profile @user`~~ — IMPLEMENTADO
 2. `/h2h @a @b`
   - Histórico e estatísticas de confronto direto entre dois jogadores.
 3. `/activity`
   - Jogadores mais ativos da season.
 4. `/records`
   - Maior streak, melhor win rate (com mínimo de jogos) e outros recordes.
+
+### Filtros pendentes para `/history`
+- `vs:@user` — confronto direto
+- `from:date` / `to:date` — filtro por período
+- Paginação por botões para mais de 10 duelos
 
 ## Direcionamento técnico
 - Criar queries eficientes no Prisma para:

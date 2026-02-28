@@ -6,9 +6,9 @@
 - Dar ferramentas operacionais seguras para manutenção sem acesso direto ao banco.
 
 ## Escopo priorizado
-1. Notificações automáticas (DM + fallback em canal)
-2. Comando `/pending` (pendências do usuário)
-3. Comandos administrativos com trilha de auditoria
+1. Notificações automáticas (DM + fallback em canal) — **parcialmente implementado**
+2. Comando `/pending` (pendências do usuário) — **IMPLEMENTADO**
+3. Comandos administrativos com trilha de auditoria — **parcialmente implementado**
 
 ---
 
@@ -16,19 +16,19 @@
 
 ### Eventos que devem gerar notificação
 - Duelo criado:
-  - notificar oponente e testemunha.
+  - notificar oponente e testemunha. *(pendente)*
 - Duelo pronto para iniciar (`ACCEPTED`):
-  - notificar duelistas.
+  - notificar duelistas. *(pendente)*
 - Resultado enviado (`AWAITING_VALIDATION`):
-  - notificar testemunha.
+  - notificar testemunha. **IMPLEMENTADO** — DM com fallback para menção no canal (`lib/notifications.ts`)
 - Resultado confirmado (`CONFIRMED`):
-  - notificar duelistas com placar final.
+  - notificar duelistas com placar final. *(pendente)*
 - Resultado rejeitado (volta para `IN_PROGRESS`):
-  - notificar duelistas para reenvio.
+  - notificar duelistas para reenvio. *(pendente)*
 - Duelo próximo de expirar:
-  - aviso com janela final (ex.: 10 min antes).
+  - aviso com janela final (ex.: 10 min antes). *(pendente)*
 - Duelo expirado:
-  - notificar participantes.
+  - notificar participantes. *(pendente)*
 
 ### Estratégia de entrega
 - Prioridade 1: DM.
@@ -50,31 +50,18 @@
 
 ---
 
-## 2) Comando `/pending`
+## 2) Comando `/pending` — IMPLEMENTADO
 
-### Objetivo
-- Mostrar ao usuário tudo que depende de ação dele naquele momento.
+### Implementação atual (`commands/pending.ts` + `services/pending.service.ts`)
+- Mostra duelos que precisam de ação do usuário na season atual
+- Resposta ephemeral (só o usuário vê)
+- Ordenação por urgência (5 níveis): expirando > validação > aceitação > pronto > em andamento
+- Exibe tempo restante para duelos PROPOSED
+- Para cada item: `#duelId`, adversário, status, ação esperada
 
-### Saída do comando
-- Seções separadas:
-  - `Aguardando sua aceitação`
-  - `Aguardando sua validação`
-  - `Prontos para iniciar`
-  - `Duelos perto de expirar`
-- Para cada item:
-  - `#duelId`, adversário, status, tempo restante, ação esperada.
-
-### Filtros
-- `season: current|all` (default `current`).
-- `limit` (default 10, max 25).
-
-### Regras
-- Mostrar apenas duelos em que o usuário participa.
-- Ordenação por urgência:
-  1. perto de expirar
-  2. aguardando validação
-  3. aguardando aceitação
-  4. prontos para iniciar
+### Pendente para v2
+- Filtros `season: current|all` e `limit`
+- Seções visuais separadas por categoria de urgência
 
 ---
 
@@ -85,16 +72,20 @@
 - Garantir rastreabilidade de qualquer intervenção.
 
 ### Comandos propostos
-1. `/admin duel reopen duel_id:<id> reason:<texto>`
+1. `/admin duel reopen duel_id:<id> reason:<texto>` *(pendente)*
 - Reabre duelo para `IN_PROGRESS` quando estava travado incorretamente.
 
-2. `/admin duel cancel duel_id:<id> reason:<texto>`
+2. `/admin duel cancel duel_id:<id> reason:<texto>` — **IMPLEMENTADO**
 - Cancela duelo forçando status `CANCELLED`.
+- Implementado em `commands/admin.ts` com verificação de cargo via `ADMIN_ROLE_IDS`.
+- Valida que o duelo não está em estado terminal.
+- Loga ação com admin ID, motivo e status anterior.
+- Atualiza embed original (remove botões).
 
-3. `/admin duel fix-result duel_id:<id> winner:@user score:<x-y> reason:<texto>`
+3. `/admin duel fix-result duel_id:<id> winner:@user score:<x-y> reason:<texto>` *(pendente)*
 - Corrige resultado confirmado em caso de erro humano comprovado.
 
-4. `/admin duel force-expire duel_id:<id> reason:<texto>`
+4. `/admin duel force-expire duel_id:<id> reason:<texto>` *(pendente)*
 - Força `EXPIRED` quando necessário.
 
 ### Controle de permissão
@@ -137,12 +128,13 @@
 ---
 
 ## Ordem de implementação recomendada
-1. `/pending` + queries de pendência
-2. Notificações automáticas principais (criação, validação, pronto para iniciar, expiração)
-3. Fallback DM -> canal
-4. Infra de auditoria
-5. `/admin duel cancel` e `/admin duel reopen`
-6. `/admin duel fix-result` com transação e rollback seguro
+1. ~~`/pending` + queries de pendência~~ — IMPLEMENTADO
+2. ~~Notificação de validação (testemunha)~~ — IMPLEMENTADO (DM + fallback canal)
+3. ~~`/admin duel cancel`~~ — IMPLEMENTADO
+4. Notificações automáticas restantes (criação, aceitação, confirmação, rejeição, expiração)
+5. Infra de auditoria (`AdminActionLog`)
+6. `/admin duel reopen`
+7. `/admin duel fix-result` com transação e rollback seguro
 
 ---
 
