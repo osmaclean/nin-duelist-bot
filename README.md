@@ -359,6 +359,21 @@ Para evitar abuso de pontuação, existe uma regra simples: **o mesmo par de jog
 
 ---
 
+### Notificações
+
+O bot envia DMs automáticas nos eventos importantes do duelo. Se a DM falhar (privacidade desativada), faz fallback com menção no canal do duelo.
+
+| Evento | Quem recebe |
+|---|---|
+| Duelo criado | Oponente + testemunha |
+| Todos aceitaram (ACCEPTED) | Ambos duelistas |
+| Resultado enviado | Testemunha |
+| Resultado confirmado | Ambos duelistas |
+| Resultado rejeitado | Ambos duelistas |
+| Duelo expirado | Todos (3 participantes) |
+
+---
+
 ## Arquitetura
 
 ```
@@ -383,7 +398,7 @@ src/
 
 - **Optimistic locking** — Todas as transições de estado usam `updateMany` com filtro de status. Se o status ja mudou (race condition), retorna null e mostra erro amigável.
 - **Transação atômica na confirmação** — `confirmAndApplyResult` encapsula `confirmResult` + `applyResult` dentro de `prisma.$transaction()` no service layer, garantindo consistência entre status do duelo e stats dos jogadores.
-- **Notificação fire-and-forget** — DM para testemunha ao receber resultado, com fallback para menção no canal. Nunca bloqueia o fluxo principal.
+- **Notificações fire-and-forget** — DM com fallback para menção no canal em todos os eventos do ciclo de vida do duelo (criação, aceitação, resultado, confirmação, rejeição, expiração). Nunca bloqueiam o fluxo principal.
 - **Graceful shutdown** — `SIGTERM`/`SIGINT` desconectam o client Discord e o Prisma antes de encerrar o processo.
 - **Embed único editado in-place** — Cada duelo tem um embed persistente que é atualizado via `channelId` + `messageId`. Botões mudam dinamicamente conforme o estado.
 - **Auto-discovery de handlers** — Barrel files (`index.ts`) exportam mapas `Record<string, handler>`. O roteador em `interactionCreate.ts` faz lookup direto sem `switch/case`.
@@ -405,6 +420,12 @@ Constantes configuráveis em `src/config.ts`:
 | `RANK_PAGE_SIZE` | 20 | Jogadores por página no ranking |
 | `POINTS_WIN` | +1 | Pontos por vitória |
 | `POINTS_LOSS` | -1 | Pontos por derrota |
+
+---
+
+## Roadmap
+
+Veja [`docs/ROADMAP.md`](docs/ROADMAP.md) para próximos passos e decisões de produto.
 
 ---
 
