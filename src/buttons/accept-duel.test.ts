@@ -12,10 +12,15 @@ vi.mock('../lib/embeds', () => ({
   buildDuelEmbed: vi.fn(),
 }));
 
+vi.mock('../lib/notifications', () => ({
+  notifyDuelAccepted: vi.fn().mockResolvedValue(undefined),
+}));
+
 function interaction(customId = 'accept-duel:10', userId = 'u2') {
   return {
     customId,
     user: { id: userId },
+    client: { users: { fetch: vi.fn() }, channels: { fetch: vi.fn() } },
     deferUpdate: vi.fn().mockResolvedValue(undefined),
     followUp: vi.fn().mockResolvedValue(undefined),
     editReply: vi.fn().mockResolvedValue(undefined),

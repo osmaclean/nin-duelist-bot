@@ -1,6 +1,7 @@
 import { ButtonInteraction } from 'discord.js';
 import { getDuelById, confirmAndApplyResult } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
+import { notifyDuelConfirmed } from '../lib/notifications';
 
 export async function handleConfirmResult(interaction: ButtonInteraction) {
   const duelId = parseInt(interaction.customId.split(':')[1], 10);
@@ -32,4 +33,6 @@ export async function handleConfirmResult(interaction: ButtonInteraction) {
 
   const embed = buildDuelEmbed(updated);
   await interaction.editReply({ embeds: [embed], components: [] });
+
+  notifyDuelConfirmed(interaction.client, updated).catch(() => {});
 }

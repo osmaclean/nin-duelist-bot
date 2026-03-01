@@ -23,6 +23,9 @@ vi.mock('../services/antifarm.service', () => ({
 vi.mock('../lib/embeds', () => ({
   buildDuelEmbed: vi.fn(),
 }));
+vi.mock('../lib/notifications', () => ({
+  notifyDuelCreated: vi.fn().mockResolvedValue(undefined),
+}));
 
 function makeInteraction(params?: {
   userId?: string;
@@ -39,6 +42,7 @@ function makeInteraction(params?: {
 
   return {
     user: { id: userId, username: userName },
+    client: { users: { fetch: vi.fn() }, channels: { fetch: vi.fn() } },
     channelId: 'chan-1',
     options: {
       getUser: vi.fn((name: string) => (name === 'opponent' ? opponent : witness)),

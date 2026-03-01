@@ -44,6 +44,10 @@ vi.mock('../lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock('../lib/notifications', () => ({
+  notifyDuelExpired: vi.fn().mockResolvedValue(undefined),
+}));
+
 function makeDuel(id: number, extra: Record<string, unknown> = {}) {
   return {
     id,
@@ -70,7 +74,7 @@ describe('jobs/expire-duels', () => {
   });
 
   it('should start job and log startup message', async () => {
-    startExpireDuelsJob({ channels: { fetch: vi.fn() } } as any);
+    startExpireDuelsJob({ channels: { fetch: vi.fn() }, users: { fetch: vi.fn() } } as any);
 
     const { logger } = await import('../lib/logger');
     expect(logger.info).toHaveBeenCalledWith('Job expire-duels iniciado');
@@ -99,7 +103,7 @@ describe('jobs/expire-duels', () => {
     (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
     (buildDuelEmbed as any).mockReturnValue({ title: 'expired' });
 
-    startExpireDuelsJob({ channels: { fetch: channelFetch } } as any);
+    startExpireDuelsJob({ channels: { fetch: channelFetch }, users: { fetch: vi.fn() } } as any);
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(prisma.duel.updateMany).toHaveBeenCalledWith({
@@ -119,7 +123,7 @@ describe('jobs/expire-duels', () => {
     (prisma.duel.findMany as any).mockResolvedValue([duelA, duelB]);
     (prisma.duel.updateMany as any).mockResolvedValue({ count: 2 });
 
-    startExpireDuelsJob({ channels: { fetch: channelFetch } } as any);
+    startExpireDuelsJob({ channels: { fetch: channelFetch }, users: { fetch: vi.fn() } } as any);
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(prisma.duel.updateMany).toHaveBeenCalledTimes(1);
@@ -132,7 +136,7 @@ describe('jobs/expire-duels', () => {
     (prisma.duel.findMany as any).mockResolvedValue([duel]);
     (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
 
-    startExpireDuelsJob({ channels: { fetch: channelFetch } } as any);
+    startExpireDuelsJob({ channels: { fetch: channelFetch }, users: { fetch: vi.fn() } } as any);
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(channelFetch).toHaveBeenCalledWith('channel-3');
@@ -145,7 +149,7 @@ describe('jobs/expire-duels', () => {
     (prisma.duel.findMany as any).mockResolvedValue([duel]);
     (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
 
-    startExpireDuelsJob({ channels: { fetch: channelFetch } } as any);
+    startExpireDuelsJob({ channels: { fetch: channelFetch }, users: { fetch: vi.fn() } } as any);
 
     await expect(vi.advanceTimersByTimeAsync(1000)).resolves.not.toThrow();
     expect(prisma.duel.updateMany).toHaveBeenCalledTimes(1);
@@ -155,7 +159,7 @@ describe('jobs/expire-duels', () => {
     const error = new Error('db error');
     (prisma.duel.findMany as any).mockRejectedValue(error);
 
-    startExpireDuelsJob({ channels: { fetch: vi.fn() } } as any);
+    startExpireDuelsJob({ channels: { fetch: vi.fn() }, users: { fetch: vi.fn() } } as any);
     await vi.advanceTimersByTimeAsync(1000);
 
     const { logger } = await import('../lib/logger');

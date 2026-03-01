@@ -6,6 +6,7 @@ import { createDuel, setMessageId, hasActiveDuel } from '../services/duel.servic
 import { canDuelToday } from '../services/antifarm.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
+import { notifyDuelCreated } from '../lib/notifications';
 
 export async function handleDuelCommand(interaction: ChatInputCommandInteraction) {
   const season = await getActiveSeason();
@@ -90,4 +91,6 @@ export async function handleDuelCommand(interaction: ChatInputCommandInteraction
   });
 
   await setMessageId(duel.id, reply.id);
+
+  notifyDuelCreated(interaction.client, duel).catch(() => {});
 }

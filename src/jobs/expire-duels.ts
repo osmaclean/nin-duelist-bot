@@ -2,6 +2,7 @@ import { Client, TextChannel } from 'discord.js';
 import { prisma } from '../lib/prisma';
 import { DUEL_INCLUDE } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
+import { notifyDuelExpired } from '../lib/notifications';
 import { DUEL_EXPIRY_MS, EXPIRE_CHECK_INTERVAL_MS } from '../config';
 import { logger } from '../lib/logger';
 
@@ -47,6 +48,8 @@ async function runExpireCycle(client: Client) {
       } catch {
         // Channel/message may have been deleted, ignore
       }
+
+      notifyDuelExpired(client, { ...duel, status: 'EXPIRED' as const }).catch(() => {});
     }
   } catch (error) {
     logger.error('Erro no job expire-duels', { error: String(error) });

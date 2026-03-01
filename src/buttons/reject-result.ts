@@ -1,5 +1,6 @@
 import { createDuelButtonHandler } from './handler';
 import { rejectResult } from '../services/duel.service';
+import { notifyResultRejected } from '../lib/notifications';
 
 export const handleRejectResult = createDuelButtonHandler({
   expectedStatus: 'AWAITING_VALIDATION',
@@ -7,6 +8,12 @@ export const handleRejectResult = createDuelButtonHandler({
     !duel.witness || interaction.user.id !== duel.witness.discordId
       ? 'Apenas a testemunha pode rejeitar o resultado.'
       : null,
-  execute: (duelId) => rejectResult(duelId),
+  execute: async (duelId, interaction) => {
+    const updated = await rejectResult(duelId);
+    if (updated) {
+      notifyResultRejected(interaction.client, updated).catch(() => {});
+    }
+    return updated;
+  },
   errorMessage: 'Este duelo não está aguardando validação.',
 });
