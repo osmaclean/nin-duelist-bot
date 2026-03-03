@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleAcceptWitness } from './accept-witness';
-import { acceptWitness, getDuelById } from '../services/duel.service';
-import { buildDuelEmbed } from '../lib/embeds';
+import { getDuelById } from '../services/duel.service';
 
 vi.mock('../services/duel.service', () => ({
   getDuelById: vi.fn(),
@@ -34,7 +33,7 @@ function interaction(customId = 'accept-witness:10', userId = 'u3') {
   } as any;
 }
 
-describe('buttons/accept-witness', () => {
+describe('buttons/accept-witness (legacy)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -65,83 +64,5 @@ describe('buttons/accept-witness', () => {
       content: 'Apenas a testemunha designada pode aceitar.',
       ephemeral: true,
     });
-  });
-
-  it('should return error when service fails', async () => {
-    (getDuelById as any).mockResolvedValue({
-      id: 10,
-      status: 'PROPOSED',
-      witness: { discordId: 'u3' },
-    });
-    (acceptWitness as any).mockResolvedValue(null);
-    const i = interaction();
-
-    await handleAcceptWitness(i);
-
-    expect(i.followUp).toHaveBeenCalledWith({
-      content: 'Este duelo não está mais disponível.',
-      ephemeral: true,
-    });
-  });
-
-  it('should show accept-duel + cancel when still PROPOSED and opponent pending', async () => {
-    (getDuelById as any).mockResolvedValue({
-      id: 10,
-      status: 'PROPOSED',
-      witness: { discordId: 'u3' },
-    });
-    (acceptWitness as any).mockResolvedValue({
-      id: 10,
-      status: 'PROPOSED',
-      opponentAccepted: false,
-    });
-    (buildDuelEmbed as any).mockReturnValue({ embed: true });
-    const i = interaction();
-
-    await handleAcceptWitness(i);
-
-    const payload = i.editReply.mock.calls[0][0];
-    expect(payload.components).toHaveLength(1);
-  });
-
-  it('should show cancel button when still PROPOSED and witness not yet accepted', async () => {
-    (getDuelById as any).mockResolvedValue({
-      id: 10,
-      status: 'PROPOSED',
-      witness: { discordId: 'u3' },
-    });
-    (acceptWitness as any).mockResolvedValue({
-      id: 10,
-      status: 'PROPOSED',
-      opponentAccepted: true,
-      witnessAccepted: false,
-    });
-    (buildDuelEmbed as any).mockReturnValue({ embed: true });
-    const i = interaction();
-
-    await handleAcceptWitness(i);
-
-    const payload = i.editReply.mock.calls[0][0];
-    expect(payload.components).toHaveLength(1);
-  });
-
-  it('should show start-duel + cancel when ACCEPTED', async () => {
-    (getDuelById as any).mockResolvedValue({
-      id: 10,
-      status: 'PROPOSED',
-      witness: { discordId: 'u3' },
-    });
-    (acceptWitness as any).mockResolvedValue({
-      id: 10,
-      status: 'ACCEPTED',
-      opponentAccepted: true,
-    });
-    (buildDuelEmbed as any).mockReturnValue({ embed: true });
-    const i = interaction();
-
-    await handleAcceptWitness(i);
-
-    const payload = i.editReply.mock.calls[0][0];
-    expect(payload.components).toHaveLength(1);
   });
 });

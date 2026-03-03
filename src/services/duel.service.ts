@@ -65,37 +65,11 @@ export async function setMessageId(duelId: number, messageId: string) {
 }
 
 export async function acceptOpponent(duelId: number) {
-  // Mark opponent accepted
-  await prisma.duel.updateMany({
-    where: { id: duelId, status: 'PROPOSED', opponentAccepted: false },
-    data: { opponentAccepted: true },
+  // Opponent accepts → move directly to ACCEPTED
+  return transitionDuel(duelId, 'PROPOSED', {
+    status: 'ACCEPTED',
+    opponentAccepted: true,
   });
-
-  return tryMoveToAccepted(duelId);
-}
-
-export async function acceptWitness(duelId: number) {
-  await prisma.duel.updateMany({
-    where: { id: duelId, status: 'PROPOSED', witnessAccepted: false },
-    data: { witnessAccepted: true },
-  });
-
-  return tryMoveToAccepted(duelId);
-}
-
-/** Move to ACCEPTED if all parties have accepted */
-async function tryMoveToAccepted(duelId: number) {
-  const duel = await prisma.duel.findUnique({ where: { id: duelId } });
-  if (!duel || duel.status !== 'PROPOSED') return getDuelById(duelId);
-
-  const opponentOk = duel.opponentAccepted;
-  const witnessOk = duel.witnessAccepted;
-
-  if (opponentOk && witnessOk) {
-    return transitionDuel(duelId, 'PROPOSED', { status: 'ACCEPTED' });
-  }
-
-  return getDuelById(duelId);
 }
 
 export async function startDuel(duelId: number) {

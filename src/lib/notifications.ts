@@ -37,7 +37,7 @@ async function sendDmWithFallback(
  */
 export async function notifyDuelCreated(client: Client, duel: DuelWithPlayers): Promise<void> {
   const message =
-    `**Duelo #${duel.id}** — Você foi convocado!\n` +
+    `**Duelo #${duel.id}** — Você foi desafiado!\n` +
     `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}> (${duel.format})\n` +
     `Aceite no canal do duelo antes que expire!`;
 
@@ -46,7 +46,7 @@ export async function notifyDuelCreated(client: Client, duel: DuelWithPlayers): 
     sendDmWithFallback(client, duel.witness.discordId,
       `**Duelo #${duel.id}** — Você foi escolhido como testemunha!\n` +
       `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}> (${duel.format})\n` +
-      `Aceite no canal do duelo antes que expire!`,
+      `Você validará o resultado quando o duelo terminar.`,
       duel.id, duel.channelId),
   ]);
 
@@ -58,7 +58,7 @@ export async function notifyDuelCreated(client: Client, duel: DuelWithPlayers): 
  */
 export async function notifyDuelAccepted(client: Client, duel: DuelWithPlayers): Promise<void> {
   const message =
-    `**Duelo #${duel.id}** — Todos aceitaram!\n` +
+    `**Duelo #${duel.id}** — Oponente aceitou!\n` +
     `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}>\n` +
     `O duelo está pronto para iniciar. Vá ao canal e clique em "Iniciar Duelo"!`;
 
@@ -128,12 +128,9 @@ export async function notifyDuelExpiringSoon(client: Client, duel: DuelWithPlaye
   const message =
     `**Duelo #${duel.id}** — Expirando em breve!\n` +
     `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}>\n` +
-    `Aceitem no canal do duelo antes que expire!`;
+    `Aceite no canal do duelo antes que expire!`;
 
-  await Promise.all([
-    sendDmWithFallback(client, duel.opponent.discordId, message, duel.id, duel.channelId),
-    sendDmWithFallback(client, duel.witness.discordId, message, duel.id, duel.channelId),
-  ]);
+  await sendDmWithFallback(client, duel.opponent.discordId, message, duel.id, duel.channelId);
 
   logger.info('Notificação de duelo expirando enviada', { duelId: duel.id });
 }

@@ -110,8 +110,8 @@ describe('buttons/accept-duel', () => {
     });
   });
 
-  it('should update message with PROPOSED buttons when still waiting witness', async () => {
-    const updated = { id: 10, status: 'PROPOSED' };
+  it('should update message with ACCEPTED buttons when opponent accepts', async () => {
+    const updated = { id: 10, status: 'ACCEPTED', opponentAccepted: true };
     (getDuelById as any).mockResolvedValue({
       id: 10,
       status: 'PROPOSED',
@@ -126,23 +126,6 @@ describe('buttons/accept-duel', () => {
     expect(i.editReply).toHaveBeenCalledTimes(1);
     const payload = i.editReply.mock.calls[0][0];
     expect(payload.embeds).toEqual([{ embed: true }]);
-    expect(payload.components).toHaveLength(1);
-  });
-
-  it('should update message with ACCEPTED buttons when both accepted', async () => {
-    const updated = { id: 10, status: 'ACCEPTED' };
-    (getDuelById as any).mockResolvedValue({
-      id: 10,
-      status: 'PROPOSED',
-      opponent: { discordId: 'u2' },
-    });
-    (acceptOpponent as any).mockResolvedValue(updated);
-    (buildDuelEmbed as any).mockReturnValue({ embed: true });
-    const i = interaction();
-
-    await handleAcceptDuel(i);
-
-    const payload = i.editReply.mock.calls[0][0];
     expect(payload.components).toHaveLength(1);
   });
 });

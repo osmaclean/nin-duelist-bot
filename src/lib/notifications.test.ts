@@ -117,7 +117,7 @@ describe('lib/notifications', () => {
       expect(client.users.fetch).toHaveBeenCalledWith('u2');
       expect(client.users.fetch).toHaveBeenCalledWith('u3');
       expect(client._send).toHaveBeenCalledTimes(2);
-      expect(client._send.mock.calls[0][0]).toContain('convocado');
+      expect(client._send.mock.calls[0][0]).toContain('desafiado');
       expect(client._send.mock.calls[1][0]).toContain('testemunha');
     });
   });
@@ -130,7 +130,7 @@ describe('lib/notifications', () => {
       expect(client.users.fetch).toHaveBeenCalledWith('u1');
       expect(client.users.fetch).toHaveBeenCalledWith('u2');
       expect(client._send).toHaveBeenCalledTimes(2);
-      expect(client._send.mock.calls[0][0]).toContain('Todos aceitaram');
+      expect(client._send.mock.calls[0][0]).toContain('Oponente aceitou');
     });
   });
 

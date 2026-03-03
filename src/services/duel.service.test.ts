@@ -3,7 +3,6 @@ import { prisma } from '../lib/prisma';
 import { applyResult } from './player.service';
 import {
   acceptOpponent,
-  acceptWitness,
   cancelDuel,
   confirmAndApplyResult,
   confirmResult,
@@ -112,85 +111,25 @@ describe('duel.service', () => {
     });
   });
 
-  it('acceptOpponent should move to ACCEPTED when witness already accepted', async () => {
-    (prisma.duel.updateMany as any)
-      .mockResolvedValueOnce({ count: 1 })
-      .mockResolvedValueOnce({ count: 1 });
-    (prisma.duel.findUnique as any)
-      .mockResolvedValueOnce(mockDuel('PROPOSED', { opponentAccepted: true, witnessAccepted: true }))
-      .mockResolvedValueOnce(mockDuel('ACCEPTED', { opponentAccepted: true, witnessAccepted: true }));
-
-    const result = await acceptOpponent(duelId);
-
-    expect(prisma.duel.updateMany).toHaveBeenNthCalledWith(1, {
-      where: { id: duelId, status: 'PROPOSED', opponentAccepted: false },
-      data: { opponentAccepted: true },
-    });
-    expect(prisma.duel.updateMany).toHaveBeenNthCalledWith(2, {
-      where: { id: duelId, status: 'PROPOSED' },
-      data: { status: 'ACCEPTED' },
-    });
-    expect(result?.status).toBe('ACCEPTED');
-  });
-
-  it('acceptWitness should stay PROPOSED when opponent not accepted', async () => {
+  it('acceptOpponent should move directly to ACCEPTED', async () => {
     (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
-    (prisma.duel.findUnique as any)
-      .mockResolvedValueOnce(mockDuel('PROPOSED', { opponentAccepted: false, witnessAccepted: true }))
-      .mockResolvedValueOnce(mockDuel('PROPOSED', { opponentAccepted: false, witnessAccepted: true }));
+    (prisma.duel.findUnique as any).mockResolvedValue(mockDuel('ACCEPTED', { opponentAccepted: true }));
 
-    const result = await acceptWitness(duelId);
+    const result = await acceptOpponent(duelId);
 
-    expect(prisma.duel.updateMany).toHaveBeenCalledTimes(1);
-    expect(result?.status).toBe('PROPOSED');
-  });
-
-  it('acceptWitness should move to ACCEPTED when opponent already accepted', async () => {
-    (prisma.duel.updateMany as any)
-      .mockResolvedValueOnce({ count: 1 })
-      .mockResolvedValueOnce({ count: 1 });
-    (prisma.duel.findUnique as any)
-      .mockResolvedValueOnce(mockDuel('PROPOSED', { opponentAccepted: true, witnessAccepted: true }))
-      .mockResolvedValueOnce(mockDuel('ACCEPTED', { opponentAccepted: true, witnessAccepted: true }));
-
-    const result = await acceptWitness(duelId);
-
-    expect(prisma.duel.updateMany).toHaveBeenNthCalledWith(1, {
-      where: { id: duelId, status: 'PROPOSED', witnessAccepted: false },
-      data: { witnessAccepted: true },
-    });
-    expect(prisma.duel.updateMany).toHaveBeenNthCalledWith(2, {
+    expect(prisma.duel.updateMany).toHaveBeenCalledWith({
       where: { id: duelId, status: 'PROPOSED' },
-      data: { status: 'ACCEPTED' },
+      data: { status: 'ACCEPTED', opponentAccepted: true },
     });
     expect(result?.status).toBe('ACCEPTED');
   });
 
-  it('acceptOpponent should return null when duel does not exist', async () => {
+  it('acceptOpponent should return null when duel is not PROPOSED', async () => {
     (prisma.duel.updateMany as any).mockResolvedValue({ count: 0 });
-    (prisma.duel.findUnique as any).mockResolvedValueOnce(null).mockResolvedValueOnce(null);
 
     const result = await acceptOpponent(duelId);
 
-    expect(prisma.duel.findUnique).toHaveBeenNthCalledWith(1, { where: { id: duelId } });
-    expect(prisma.duel.findUnique).toHaveBeenNthCalledWith(2, {
-      where: { id: duelId },
-      include,
-    });
     expect(result).toBeNull();
-  });
-
-  it('acceptOpponent should return current duel when status is no longer PROPOSED', async () => {
-    const accepted = mockDuel('ACCEPTED', { opponentAccepted: true, witnessAccepted: true });
-    (prisma.duel.updateMany as any).mockResolvedValue({ count: 0 });
-    (prisma.duel.findUnique as any)
-      .mockResolvedValueOnce(mockDuel('ACCEPTED'))
-      .mockResolvedValueOnce(accepted);
-
-    const result = await acceptOpponent(duelId);
-
-    expect(prisma.duel.updateMany).toHaveBeenCalledTimes(1);
-    expect(result).toEqual(accepted);
   });
 
   it('startDuel should return null when transition precondition fails', async () => {

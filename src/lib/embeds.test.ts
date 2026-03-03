@@ -24,7 +24,6 @@ describe('lib/embeds', () => {
     const embed = buildDuelEmbed(
       duelBase({
         opponentAccepted: true,
-        witnessAccepted: false,
       }),
     );
     const json = embed.toJSON();
@@ -34,8 +33,7 @@ describe('lib/embeds', () => {
     expect(json.timestamp).toBe('2026-02-26T10:00:00.000Z');
 
     const acceptance = (json.fields ?? []).find((f) => f.name === 'Aceitação');
-    expect(acceptance?.value).toContain('Oponente: Aceito');
-    expect(acceptance?.value).toContain('Testemunha: Pendente');
+    expect(acceptance?.value).toBe('Oponente: Aceito');
   });
 
   it('buildDuelEmbed should include score when winner and score are present', () => {
@@ -64,18 +62,16 @@ describe('lib/embeds', () => {
     expect(formatField?.value).toBe('Melhor de 1');
   });
 
-  it('buildDuelEmbed should always include witness acceptance in PROPOSED', () => {
+  it('buildDuelEmbed should show opponent pending in PROPOSED', () => {
     const embed = buildDuelEmbed(
       duelBase({
         status: 'PROPOSED',
         opponentAccepted: false,
-        witnessAccepted: true,
       }),
     ).toJSON();
 
     const acceptance = (embed.fields ?? []).find((f) => f.name === 'Aceitação');
-    expect(acceptance?.value).toContain('Oponente: Pendente');
-    expect(acceptance?.value).toContain('Testemunha: Aceito');
+    expect(acceptance?.value).toBe('Oponente: Pendente');
   });
 
   it('buildDuelEmbed should not include score when winner is missing', () => {

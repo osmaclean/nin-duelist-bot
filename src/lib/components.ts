@@ -23,15 +23,6 @@ export function buildDuelComponents(duel: DuelInfo): ActionRowBuilder<ButtonBuil
       );
     }
 
-    if (!duel.witnessAccepted) {
-      buttons.push(
-        new ButtonBuilder()
-          .setCustomId(`accept-witness:${id}`)
-          .setLabel('Aceitar (Testemunha)')
-          .setStyle(ButtonStyle.Primary),
-      );
-    }
-
     buttons.push(
       new ButtonBuilder()
         .setCustomId(`cancel-duel:${id}`)

@@ -18,19 +18,14 @@ function buttonLabels(components: any[]) {
 }
 
 describe('lib/components', () => {
-  it('PROPOSED with nobody accepted shows 3 buttons', () => {
+  it('PROPOSED with opponent not accepted shows accept + cancel', () => {
     const result = buildDuelComponents(duel('PROPOSED'));
-    expect(buttonLabels(result)).toEqual(['Aceitar Duelo', 'Aceitar (Testemunha)', 'Cancelar']);
-  });
-
-  it('PROPOSED with opponent accepted shows witness + cancel', () => {
-    const result = buildDuelComponents(duel('PROPOSED', { opponentAccepted: true }));
-    expect(buttonLabels(result)).toEqual(['Aceitar (Testemunha)', 'Cancelar']);
-  });
-
-  it('PROPOSED with witness accepted shows accept duel + cancel', () => {
-    const result = buildDuelComponents(duel('PROPOSED', { witnessAccepted: true }));
     expect(buttonLabels(result)).toEqual(['Aceitar Duelo', 'Cancelar']);
+  });
+
+  it('PROPOSED with opponent accepted shows only cancel', () => {
+    const result = buildDuelComponents(duel('PROPOSED', { opponentAccepted: true }));
+    expect(buttonLabels(result)).toEqual(['Cancelar']);
   });
 
   it('ACCEPTED shows start + cancel', () => {
