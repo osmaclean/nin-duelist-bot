@@ -1,19 +1,17 @@
 import { createDuelButtonHandler } from './handler';
-import { acceptWitness } from '../services/duel.service';
-import { notifyDuelAccepted } from '../lib/notifications';
+import { getDuelById } from '../services/duel.service';
 
+/**
+ * Legacy handler — kept for backwards compatibility with old embeds that
+ * still have the "Aceitar (Testemunha)" button. Will always return the
+ * current duel state without modifying it.
+ */
 export const handleAcceptWitness = createDuelButtonHandler({
   expectedStatus: 'PROPOSED',
   permissionCheck: (interaction, duel) =>
     !duel.witness || interaction.user.id !== duel.witness.discordId
       ? 'Apenas a testemunha designada pode aceitar.'
       : null,
-  execute: async (duelId, interaction) => {
-    const updated = await acceptWitness(duelId);
-    if (updated?.status === 'ACCEPTED') {
-      notifyDuelAccepted(interaction.client, updated).catch(() => {});
-    }
-    return updated;
-  },
+  execute: async (duelId) => getDuelById(duelId),
   errorMessage: 'Este duelo não está mais disponível.',
 });

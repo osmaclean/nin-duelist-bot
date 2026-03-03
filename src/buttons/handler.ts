@@ -39,9 +39,10 @@ export async function validateDuelButton(
 /** Disables all buttons in the current message to show immediate feedback */
 function disableAllButtons(interaction: ButtonInteraction): void {
   const message = interaction.message;
-  if (!message?.components?.length) return;
+  const components = message?.components as Array<{ components: unknown[] }> | undefined;
+  if (!components?.length) return;
 
-  const disabledRows = message.components.map((row) => {
+  const disabledRows = components.map((row) => {
     const newRow = new ActionRowBuilder<ButtonBuilder>();
     for (const component of row.components) {
       newRow.addComponents(
