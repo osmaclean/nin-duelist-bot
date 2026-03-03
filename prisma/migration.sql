@@ -169,3 +169,32 @@ ALTER TABLE "Duel" ALTER COLUMN "channelId" SET NOT NULL;
 -- =============================================
 
 ALTER TABLE "Duel" ADD COLUMN IF NOT EXISTS "expiryWarned" BOOLEAN NOT NULL DEFAULT false;
+
+-- =============================================
+-- Migration incremental: tabela AdminActionLog
+-- Audit trail persistente para ações admin.
+-- Rodar no SQL Editor do Supabase
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS "AdminActionLog" (
+  "id" SERIAL PRIMARY KEY,
+  "action" TEXT NOT NULL,
+  "adminDiscordId" TEXT NOT NULL,
+  "duelId" INTEGER,
+  "reason" TEXT,
+  "previousStatus" TEXT,
+  "newStatus" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "AdminActionLog_duelId_fkey" FOREIGN KEY ("duelId") REFERENCES "Duel"("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "AdminActionLog_duelId_idx" ON "AdminActionLog"("duelId");
+CREATE INDEX IF NOT EXISTS "AdminActionLog_adminDiscordId_idx" ON "AdminActionLog"("adminDiscordId");
+
+-- =============================================
+-- Migration incremental: coluna name na Season
+-- Nome opcional para a season (ex: "Season of Champions").
+-- Rodar no SQL Editor do Supabase
+-- =============================================
+
+ALTER TABLE "Season" ADD COLUMN IF NOT EXISTS "name" TEXT;

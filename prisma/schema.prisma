@@ -25,6 +25,7 @@ enum DuelFormat {
 model Season {
   id        Int      @id @default(autoincrement())
   number    Int      @unique
+  name      String?
   startDate DateTime @default(now())
   endDate   DateTime
   active    Boolean  @default(true)
@@ -98,7 +99,25 @@ model Duel {
   season     Season  @relation(fields: [seasonId], references: [id])
   winner     Player? @relation("Winner", fields: [winnerId], references: [id])
 
+  adminActions AdminActionLog[]
+
   @@index([status, challengerId])
   @@index([status, opponentId])
   @@index([status, createdAt])
+}
+
+model AdminActionLog {
+  id             Int      @id @default(autoincrement())
+  action         String
+  adminDiscordId String
+  duelId         Int?
+  reason         String?
+  previousStatus String?
+  newStatus      String?
+  createdAt      DateTime @default(now())
+
+  duel Duel? @relation(fields: [duelId], references: [id])
+
+  @@index([duelId])
+  @@index([adminDiscordId])
 }
