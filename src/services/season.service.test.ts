@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../lib/prisma';
-import { closeSeason, ensureActiveSeason, getActiveSeason } from './season.service';
+import { closeSeason, ensureActiveSeason, getActiveSeason, getSeasonStatus, getSeasonPodium, adminEndSeason, adminCreateSeason } from './season.service';
 import { SEASON_DURATION_DAYS } from '../config';
 
 vi.mock('../lib/logger', () => ({
@@ -11,14 +11,18 @@ vi.mock('../lib/prisma', () => ({
   prisma: {
     season: {
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
     playerSeason: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
     },
     duel: {
       updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      count: vi.fn(),
     },
   },
 }));
@@ -157,5 +161,98 @@ describe('season.service', () => {
     (prisma.season.update as any).mockRejectedValue(new Error('update failed'));
 
     await expect(closeSeason(8)).rejects.toThrow('update failed');
+  });
+
+  describe('getSeasonStatus', () => {
+    it('should return null when season not found', async () => {
+      (prisma.season.findUnique as any).mockResolvedValue(null);
+      const result = await getSeasonStatus(999);
+      expect(result).toBeNull();
+    });
+
+    it('should return season with stats', async () => {
+      const season = { id: 1, number: 3, name: 'Test', startDate: new Date(), endDate: new Date(), active: true, championId: null };
+      (prisma.season.findUnique as any).mockResolvedValue(season);
+      (prisma.duel.count as any).mockResolvedValue(42);
+      (prisma.playerSeason.count as any).mockResolvedValue(15);
+
+      const result = await getSeasonStatus(1);
+
+      expect(result).toEqual({ ...season, totalDuels: 42, activePlayers: 15 });
+    });
+  });
+
+  describe('getSeasonPodium', () => {
+    it('should return top 3 with mapped fields', async () => {
+      (prisma.playerSeason.findMany as any).mockResolvedValue([
+        { playerId: 1, player: { discordId: 'u1' }, points: 10, wins: 8, losses: 2, peakStreak: 5 },
+        { playerId: 2, player: { discordId: 'u2' }, points: 7, wins: 6, losses: 3, peakStreak: 3 },
+      ]);
+
+      const result = await getSeasonPodium(1);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({ rank: 1, playerId: 1, discordId: 'u1', points: 10, wins: 8, losses: 2, peakStreak: 5 });
+      expect(result[1].rank).toBe(2);
+    });
+
+    it('should return empty array when no players', async () => {
+      (prisma.playerSeason.findMany as any).mockResolvedValue([]);
+      const result = await getSeasonPodium(1);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('adminEndSeason', () => {
+    it('should cancel active duels and close season', async () => {
+      (prisma.duel.updateMany as any).mockResolvedValue({ count: 2 });
+      (prisma.playerSeason.findFirst as any).mockResolvedValue({ playerId: 5 });
+      (prisma.season.update as any).mockResolvedValue({});
+
+      await adminEndSeason(3);
+
+      expect(prisma.duel.updateMany).toHaveBeenCalledWith({
+        where: { seasonId: 3, status: { notIn: ['CONFIRMED', 'CANCELLED', 'EXPIRED'] } },
+        data: { status: 'CANCELLED' },
+      });
+      expect(prisma.season.update).toHaveBeenCalledWith({
+        where: { id: 3 },
+        data: { active: false, championId: 5 },
+      });
+    });
+  });
+
+  describe('adminCreateSeason', () => {
+    it('should create season with name and custom duration', async () => {
+      (prisma.season.findFirst as any).mockResolvedValue({ id: 5, number: 3 });
+      (prisma.season.create as any).mockResolvedValue({
+        id: 6, number: 4, name: 'Test Season', active: true,
+        startDate: new Date(), endDate: new Date(),
+      });
+
+      const result = await adminCreateSeason('Test Season', 45);
+
+      expect(prisma.season.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ number: 4, name: 'Test Season', active: true }),
+      });
+      const call = (prisma.season.create as any).mock.calls[0][0];
+      const diffDays = Math.round((call.data.endDate.getTime() - call.data.startDate.getTime()) / (1000 * 60 * 60 * 24));
+      expect(diffDays).toBe(45);
+      expect(result.number).toBe(4);
+    });
+
+    it('should start at number 1 when no seasons exist', async () => {
+      (prisma.season.findFirst as any).mockResolvedValue(null);
+      (prisma.season.create as any).mockResolvedValue({
+        id: 1, number: 1, name: null, active: true,
+        startDate: new Date(), endDate: new Date(),
+      });
+
+      await adminCreateSeason(null, 30);
+
+      const call = (prisma.season.create as any).mock.calls[0][0];
+      expect(call.data.number).toBe(1);
+      expect(call.data.name).toBeNull();
+    });
   });
 });
