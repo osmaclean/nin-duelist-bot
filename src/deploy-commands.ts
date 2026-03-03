@@ -46,6 +46,10 @@ const commands = [
     .addUserOption((o) => o.setName('player_b').setDescription('Segundo jogador').setRequired(true))
     .toJSON(),
 
+  new SlashCommandBuilder().setName('activity').setDescription('Top 10 jogadores mais ativos da season').toJSON(),
+
+  new SlashCommandBuilder().setName('records').setDescription('Recordes da season atual').toJSON(),
+
   new SlashCommandBuilder()
     .setName('admin')
     .setDescription('Comandos administrativos')

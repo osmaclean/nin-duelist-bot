@@ -7,6 +7,8 @@ import { handleHistoryCommand } from './history';
 import { handleProfileCommand } from './profile';
 import { handleAdminCommand } from './admin';
 import { handleH2hCommand } from './h2h';
+import { handleActivityCommand } from './activity';
+import { handleRecordsCommand } from './records';
 
 export const commandHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<void>> = {
   duel: handleDuelCommand,
@@ -17,4 +19,6 @@ export const commandHandlers: Record<string, (i: ChatInputCommandInteraction) =>
   profile: handleProfileCommand,
   admin: handleAdminCommand,
   h2h: handleH2hCommand,
+  activity: handleActivityCommand,
+  records: handleRecordsCommand,
 };
