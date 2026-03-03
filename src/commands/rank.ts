@@ -2,8 +2,7 @@ import { ChatInputCommandInteraction } from 'discord.js';
 import { getActiveSeason } from '../services/season.service';
 import { getLeaderboard } from '../services/ranking.service';
 import { buildRankEmbed } from '../lib/embeds';
-import { buildPaginationRow } from '../lib/pagination';
-import { RANK_PAGE_SIZE } from '../config';
+import { buildPaginationRow, calcStartRank } from '../lib/pagination';
 
 export async function handleRankCommand(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
@@ -22,7 +21,7 @@ export async function handleRankCommand(interaction: ChatInputCommandInteraction
     return;
   }
 
-  const startRank = (page - 1) * RANK_PAGE_SIZE + 1;
+  const startRank = calcStartRank(page);
   const embed = buildRankEmbed(season.number, result.players, result.page, result.totalPages, startRank);
   const row = buildPaginationRow(result.page, result.totalPages);
 

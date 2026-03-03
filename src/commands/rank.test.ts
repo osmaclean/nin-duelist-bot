@@ -17,7 +17,8 @@ vi.mock('../lib/embeds', () => ({
   buildRankEmbed: vi.fn(),
 }));
 
-vi.mock('../lib/pagination', () => ({
+vi.mock('../lib/pagination', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/pagination')>()),
   buildPaginationRow: vi.fn(),
 }));
 

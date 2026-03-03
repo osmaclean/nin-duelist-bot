@@ -3,6 +3,7 @@ import { registerReadyEvent } from './ready';
 import { ensureActiveSeason } from '../services/season.service';
 import { startExpireDuelsJob } from '../jobs/expire-duels';
 import { startSeasonCheckJob } from '../jobs/season-check';
+import { reconcileStaleEmbeds } from '../jobs/reconcile-embeds';
 
 vi.mock('../services/season.service', () => ({
   ensureActiveSeason: vi.fn(),
@@ -16,8 +17,16 @@ vi.mock('../jobs/season-check', () => ({
   startSeasonCheckJob: vi.fn(),
 }));
 
+vi.mock('../jobs/reconcile-embeds', () => ({
+  reconcileStaleEmbeds: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock('../lib/job-health', () => ({
+  getJobHealth: vi.fn().mockReturnValue({ 'expire-duels': {}, 'season-check': {} }),
 }));
 
 describe('events/ready', () => {
@@ -34,7 +43,7 @@ describe('events/ready', () => {
     expect(once).toHaveBeenCalledTimes(1);
   });
 
-  it('should initialize season and jobs when ready event fires', async () => {
+  it('should initialize season, jobs, and reconciliation when ready event fires', async () => {
     const once = vi.fn();
     const client = { once } as any;
     (ensureActiveSeason as any).mockResolvedValue({});
@@ -50,6 +59,7 @@ describe('events/ready', () => {
     expect(ensureActiveSeason).toHaveBeenCalledTimes(1);
     expect(startExpireDuelsJob).toHaveBeenCalledWith(readyClient);
     expect(startSeasonCheckJob).toHaveBeenCalledTimes(1);
+    expect(reconcileStaleEmbeds).toHaveBeenCalledWith(readyClient);
   });
 
   it('should log error and exit process when ensureActiveSeason fails', async () => {

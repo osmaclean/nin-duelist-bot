@@ -1,14 +1,25 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { RANK_PAGE_SIZE } from '../config';
 
-export async function getLeaderboard(seasonId: number, page: number = 1) {
+const LEADERBOARD_INCLUDE = { player: true } as const;
+type PlayerSeasonWithPlayer = Prisma.PlayerSeasonGetPayload<{ include: typeof LEADERBOARD_INCLUDE }>;
+
+export type LeaderboardResult = {
+  players: PlayerSeasonWithPlayer[];
+  total: number;
+  page: number;
+  totalPages: number;
+};
+
+export async function getLeaderboard(seasonId: number, page: number = 1): Promise<LeaderboardResult> {
   const skip = (page - 1) * RANK_PAGE_SIZE;
 
   const [players, total] = await Promise.all([
     prisma.playerSeason.findMany({
       where: { seasonId },
       orderBy: [{ points: 'desc' }, { wins: 'desc' }, { peakStreak: 'desc' }],
-      include: { player: true },
+      include: LEADERBOARD_INCLUDE,
       skip,
       take: RANK_PAGE_SIZE,
     }),

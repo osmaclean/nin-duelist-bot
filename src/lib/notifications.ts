@@ -122,6 +122,23 @@ export async function notifyResultRejected(client: Client, duel: DuelWithPlayers
 }
 
 /**
+ * Notifica todos os participantes que o duelo está prestes a expirar.
+ */
+export async function notifyDuelExpiringSoon(client: Client, duel: DuelWithPlayers): Promise<void> {
+  const message =
+    `**Duelo #${duel.id}** — Expirando em breve!\n` +
+    `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}>\n` +
+    `Aceitem no canal do duelo antes que expire!`;
+
+  await Promise.all([
+    sendDmWithFallback(client, duel.opponent.discordId, message, duel.id, duel.channelId),
+    sendDmWithFallback(client, duel.witness.discordId, message, duel.id, duel.channelId),
+  ]);
+
+  logger.info('Notificação de duelo expirando enviada', { duelId: duel.id });
+}
+
+/**
  * Notifica todos os participantes que o duelo expirou.
  */
 export async function notifyDuelExpired(client: Client, duel: DuelWithPlayers): Promise<void> {

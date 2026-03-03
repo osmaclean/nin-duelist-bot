@@ -4,6 +4,10 @@ import { getLeaderboard } from '../services/ranking.service';
 import { buildRankEmbed } from './embeds';
 import { RANK_PAGE_SIZE } from '../config';
 
+export function calcStartRank(page: number): number {
+  return (page - 1) * RANK_PAGE_SIZE + 1;
+}
+
 export function buildPaginationRow(currentPage: number, totalPages: number) {
   const row = new ActionRowBuilder<ButtonBuilder>();
 
@@ -41,7 +45,7 @@ export async function handleRankPagination(interaction: ButtonInteraction) {
   const result = await getLeaderboard(season.id, page);
 
   const safePage = Math.min(page, result.totalPages || 1);
-  const startRank = (safePage - 1) * RANK_PAGE_SIZE + 1;
+  const startRank = calcStartRank(safePage);
   const embed = buildRankEmbed(season.number, result.players, safePage, result.totalPages, startRank);
   const row = buildPaginationRow(safePage, result.totalPages);
 

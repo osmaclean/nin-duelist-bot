@@ -12,6 +12,13 @@ vi.mock('../lib/embeds', () => ({
   buildDuelEmbed: vi.fn(),
 }));
 
+vi.mock('../lib/cooldown', () => ({
+  checkCooldown: vi.fn().mockReturnValue(true),
+}));
+vi.mock('../config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../config')>()),
+}));
+
 function interaction(customId = 'start-duel:10', userId = 'u1') {
   return {
     customId,

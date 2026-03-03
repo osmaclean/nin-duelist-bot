@@ -3,42 +3,60 @@ import { getDuelById, DuelWithPlayers } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
 import { DuelStatus } from '@prisma/client';
+import { checkCooldown } from '../lib/cooldown';
+import { BUTTON_COOLDOWN_MS } from '../config';
 
-type HandlerConfig = {
+export type ValidationConfig = {
   expectedStatus: DuelStatus | DuelStatus[];
   permissionCheck: (interaction: ButtonInteraction, duel: DuelWithPlayers) => string | null;
-  execute: (duelId: number, interaction: ButtonInteraction, duel: DuelWithPlayers) => Promise<DuelWithPlayers | null>;
   errorMessage: string;
+};
+
+export type ValidationSuccess = { duelId: number; duel: DuelWithPlayers };
+export type ValidationFailure = { error: string };
+export type ValidationResult = ValidationSuccess | ValidationFailure;
+
+export async function validateDuelButton(
+  interaction: ButtonInteraction,
+  config: ValidationConfig,
+): Promise<ValidationResult> {
+  const duelId = parseInt(interaction.customId.split(':')[1], 10);
+  if (isNaN(duelId)) return { error: 'Interação inválida.' };
+
+  const duel = await getDuelById(duelId);
+  const expectedStatuses = Array.isArray(config.expectedStatus)
+    ? config.expectedStatus
+    : [config.expectedStatus];
+
+  if (!duel || !expectedStatuses.includes(duel.status)) return { error: config.errorMessage };
+
+  const permissionError = config.permissionCheck(interaction, duel);
+  if (permissionError) return { error: permissionError };
+
+  return { duelId, duel };
+}
+
+type HandlerConfig = ValidationConfig & {
+  execute: (duelId: number, interaction: ButtonInteraction, duel: DuelWithPlayers) => Promise<DuelWithPlayers | null>;
 };
 
 export function createDuelButtonHandler(config: HandlerConfig) {
   return async function (interaction: ButtonInteraction) {
-    const duelId = parseInt(interaction.customId.split(':')[1], 10);
     await interaction.deferUpdate();
 
-    if (isNaN(duelId)) {
-      await interaction.followUp({ content: 'Interação inválida.', ephemeral: true });
+    // Debounce: prevent rapid double-clicks
+    const cooldownKey = `btn:${interaction.user.id}:${interaction.customId}`;
+    if (!checkCooldown(cooldownKey, BUTTON_COOLDOWN_MS)) {
       return;
     }
 
-    const duel = await getDuelById(duelId);
-
-    const expectedStatuses = Array.isArray(config.expectedStatus)
-      ? config.expectedStatus
-      : [config.expectedStatus];
-
-    if (!duel || !expectedStatuses.includes(duel.status)) {
-      await interaction.followUp({ content: config.errorMessage, ephemeral: true });
+    const result = await validateDuelButton(interaction, config);
+    if ('error' in result) {
+      await interaction.followUp({ content: result.error, ephemeral: true });
       return;
     }
 
-    const permissionError = config.permissionCheck(interaction, duel);
-    if (permissionError) {
-      await interaction.followUp({ content: permissionError, ephemeral: true });
-      return;
-    }
-
-    const updated = await config.execute(duelId, interaction, duel);
+    const updated = await config.execute(result.duelId, interaction, result.duel);
     if (!updated) {
       await interaction.followUp({ content: config.errorMessage, ephemeral: true });
       return;

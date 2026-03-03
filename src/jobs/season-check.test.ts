@@ -17,6 +17,16 @@ vi.mock('../lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock('../lib/retry', () => ({
+  withRetry: vi.fn((fn: () => Promise<any>) => fn()),
+}));
+
+vi.mock('../lib/job-health', () => ({
+  registerJob: vi.fn(),
+  markJobSuccess: vi.fn(),
+  checkJobHealth: vi.fn(),
+}));
+
 describe('jobs/season-check', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -77,6 +87,20 @@ describe('jobs/season-check', () => {
     expect(logger.info).toHaveBeenCalledWith('Season expirou, encerrando', { seasonId: 11, seasonNumber: 3 });
     expect(closeSeason).toHaveBeenCalledWith(11);
     expect(ensureActiveSeason).toHaveBeenCalledTimes(1);
+  });
+
+  it('should call markJobSuccess after successful cycle', async () => {
+    (getActiveSeason as any).mockResolvedValue({
+      id: 10,
+      number: 2,
+      endDate: new Date('2099-01-01'),
+    });
+
+    startSeasonCheckJob();
+    await vi.advanceTimersByTimeAsync(1000);
+
+    const { markJobSuccess } = await import('../lib/job-health');
+    expect(markJobSuccess).toHaveBeenCalledWith('season-check');
   });
 
   it('should catch and log errors thrown by dependencies', async () => {

@@ -16,6 +16,13 @@ vi.mock('../lib/notifications', () => ({
   notifyDuelConfirmed: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../lib/cooldown', () => ({
+  checkCooldown: vi.fn().mockReturnValue(true),
+}));
+vi.mock('../config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../config')>()),
+}));
+
 function interaction(customId = 'confirm-result:10', userId = 'u3') {
   return {
     customId,

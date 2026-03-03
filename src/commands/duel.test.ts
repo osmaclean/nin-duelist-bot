@@ -26,6 +26,13 @@ vi.mock('../lib/embeds', () => ({
 vi.mock('../lib/notifications', () => ({
   notifyDuelCreated: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock('../lib/cooldown', () => ({
+  checkCooldown: vi.fn().mockReturnValue(true),
+  getRemainingCooldown: vi.fn().mockReturnValue(0),
+}));
+vi.mock('../config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../config')>()),
+}));
 
 function makeInteraction(params?: {
   userId?: string;
@@ -59,6 +66,21 @@ describe('commands/duel', () => {
     vi.clearAllMocks();
   });
 
+  it('should reject when user is on cooldown', async () => {
+    const { checkCooldown, getRemainingCooldown } = await import('../lib/cooldown');
+    (checkCooldown as any).mockReturnValueOnce(false);
+    (getRemainingCooldown as any).mockReturnValueOnce(15);
+    const interaction = makeInteraction();
+
+    await handleDuelCommand(interaction);
+
+    expect(interaction.reply).toHaveBeenCalledWith({
+      content: 'Aguarde 15s antes de criar outro duelo.',
+      ephemeral: true,
+    });
+    expect(getActiveSeason).not.toHaveBeenCalled();
+  });
+
   it('should reply ephemeral when no active season exists', async () => {
     (getActiveSeason as any).mockResolvedValue(null);
     const interaction = makeInteraction();
@@ -72,8 +94,24 @@ describe('commands/duel', () => {
     expect(interaction.deferReply).not.toHaveBeenCalled();
   });
 
+  it('should reject duel when season is expired but still active in DB', async () => {
+    (getActiveSeason as any).mockResolvedValue({
+      id: 10,
+      endDate: new Date('2020-01-01T00:00:00.000Z'),
+    });
+    const interaction = makeInteraction();
+
+    await handleDuelCommand(interaction);
+
+    expect(interaction.reply).toHaveBeenCalledWith({
+      content: 'A season atual está encerrando. Aguarde alguns minutos para a nova season começar.',
+      ephemeral: true,
+    });
+    expect(createDuel).not.toHaveBeenCalled();
+  });
+
   it('should reject self duel', async () => {
-    (getActiveSeason as any).mockResolvedValue({ id: 10 });
+    (getActiveSeason as any).mockResolvedValue({ id: 10, endDate: new Date('2099-01-01') });
     const interaction = makeInteraction({
       userId: 'u1',
       opponent: { id: 'u1', username: 'same', bot: false },
@@ -88,7 +126,7 @@ describe('commands/duel', () => {
   });
 
   it('should reject bot opponent', async () => {
-    (getActiveSeason as any).mockResolvedValue({ id: 10 });
+    (getActiveSeason as any).mockResolvedValue({ id: 10, endDate: new Date('2099-01-01') });
     const interaction = makeInteraction({
       opponent: { id: 'u2', username: 'botop', bot: true },
     });
@@ -102,7 +140,7 @@ describe('commands/duel', () => {
   });
 
   it('should reject bot witness', async () => {
-    (getActiveSeason as any).mockResolvedValue({ id: 10 });
+    (getActiveSeason as any).mockResolvedValue({ id: 10, endDate: new Date('2099-01-01') });
     const interaction = makeInteraction({
       witness: { id: 'u3', username: 'botwit', bot: true },
     });
@@ -116,7 +154,7 @@ describe('commands/duel', () => {
   });
 
   it('should reject witness that is one of duelists', async () => {
-    (getActiveSeason as any).mockResolvedValue({ id: 10 });
+    (getActiveSeason as any).mockResolvedValue({ id: 10, endDate: new Date('2099-01-01') });
     const interaction = makeInteraction({
       witness: { id: 'u2', username: 'same-as-opponent', bot: false },
     });
@@ -130,7 +168,7 @@ describe('commands/duel', () => {
   });
 
   it('should block when challenger already has active duel', async () => {
-    (getActiveSeason as any).mockResolvedValue({ id: 10 });
+    (getActiveSeason as any).mockResolvedValue({ id: 10, endDate: new Date('2099-01-01') });
     (getOrCreatePlayer as any)
       .mockResolvedValueOnce({ id: 1, discordId: 'u1' })
       .mockResolvedValueOnce({ id: 2, discordId: 'u2' })
@@ -148,7 +186,7 @@ describe('commands/duel', () => {
   });
 
   it('should block when opponent already has active duel', async () => {
-    (getActiveSeason as any).mockResolvedValue({ id: 10 });
+    (getActiveSeason as any).mockResolvedValue({ id: 10, endDate: new Date('2099-01-01') });
     (getOrCreatePlayer as any)
       .mockResolvedValueOnce({ id: 1, discordId: 'u1' })
       .mockResolvedValueOnce({ id: 2, discordId: 'u2' })
@@ -163,7 +201,7 @@ describe('commands/duel', () => {
   });
 
   it('should block when anti-farm rule does not allow duel', async () => {
-    (getActiveSeason as any).mockResolvedValue({ id: 10 });
+    (getActiveSeason as any).mockResolvedValue({ id: 10, endDate: new Date('2099-01-01') });
     (getOrCreatePlayer as any)
       .mockResolvedValueOnce({ id: 1, discordId: 'u1' })
       .mockResolvedValueOnce({ id: 2, discordId: 'u2' })
@@ -181,7 +219,7 @@ describe('commands/duel', () => {
   });
 
   it('should create duel and persist message id on success', async () => {
-    const season = { id: 10 };
+    const season = { id: 10, endDate: new Date('2099-01-01') };
     const embed = { embed: true };
     const duel = { id: 77 };
     (getActiveSeason as any).mockResolvedValue(season);
@@ -216,7 +254,7 @@ describe('commands/duel', () => {
   });
 
   it('should propagate errors from dependencies', async () => {
-    (getActiveSeason as any).mockResolvedValue({ id: 10 });
+    (getActiveSeason as any).mockResolvedValue({ id: 10, endDate: new Date('2099-01-01') });
     (getOrCreatePlayer as any).mockRejectedValue(new Error('player fail'));
     const interaction = makeInteraction();
 

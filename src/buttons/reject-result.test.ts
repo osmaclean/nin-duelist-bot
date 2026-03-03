@@ -16,6 +16,13 @@ vi.mock('../lib/notifications', () => ({
   notifyResultRejected: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../lib/cooldown', () => ({
+  checkCooldown: vi.fn().mockReturnValue(true),
+}));
+vi.mock('../config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../config')>()),
+}));
+
 function interaction(customId = 'reject-result:10', userId = 'u3') {
   return {
     customId,

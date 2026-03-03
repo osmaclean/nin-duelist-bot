@@ -7,11 +7,32 @@ import { canDuelToday } from '../services/antifarm.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
 import { notifyDuelCreated } from '../lib/notifications';
+import { checkCooldown, getRemainingCooldown } from '../lib/cooldown';
+import { DUEL_COOLDOWN_MS } from '../config';
 
 export async function handleDuelCommand(interaction: ChatInputCommandInteraction) {
+  // Rate limit: 1 duel creation per 30s per user
+  const cooldownKey = `duel:${interaction.user.id}`;
+  if (!checkCooldown(cooldownKey, DUEL_COOLDOWN_MS)) {
+    const remaining = getRemainingCooldown(cooldownKey, DUEL_COOLDOWN_MS);
+    await interaction.reply({
+      content: `Aguarde ${remaining}s antes de criar outro duelo.`,
+      ephemeral: true,
+    });
+    return;
+  }
+
   const season = await getActiveSeason();
   if (!season) {
     await interaction.reply({ content: 'Nenhuma season ativa no momento.', ephemeral: true });
+    return;
+  }
+
+  if (season.endDate <= new Date()) {
+    await interaction.reply({
+      content: 'A season atual está encerrando. Aguarde alguns minutos para a nova season começar.',
+      ephemeral: true,
+    });
     return;
   }
 

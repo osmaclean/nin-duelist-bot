@@ -84,8 +84,9 @@ model Duel {
 
   opponentAccepted Boolean @default(false)
   witnessAccepted  Boolean @default(false)
+  expiryWarned     Boolean @default(false)
 
-  channelId String?
+  channelId String
   messageId String?
 
   createdAt DateTime @default(now())

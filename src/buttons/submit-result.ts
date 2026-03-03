@@ -5,32 +5,26 @@ import {
   TextInputStyle,
   ActionRowBuilder,
 } from 'discord.js';
-import { getDuelById } from '../services/duel.service';
+import { validateDuelButton } from './handler';
 
 export async function handleSubmitResult(interaction: ButtonInteraction) {
-  const duelId = parseInt(interaction.customId.split(':')[1], 10);
+  const result = await validateDuelButton(interaction, {
+    expectedStatus: 'IN_PROGRESS',
+    permissionCheck: (i, duel) => {
+      const isParticipant =
+        i.user.id === duel.challenger.discordId ||
+        i.user.id === duel.opponent.discordId;
+      return isParticipant ? null : 'Apenas os duelistas podem enviar o resultado.';
+    },
+    errorMessage: 'Este duelo não está em andamento.',
+  });
 
-  if (isNaN(duelId)) {
-    await interaction.reply({ content: 'Interação inválida.', ephemeral: true });
+  if ('error' in result) {
+    await interaction.reply({ content: result.error, ephemeral: true });
     return;
   }
 
-  const duel = await getDuelById(duelId);
-
-  if (!duel || duel.status !== 'IN_PROGRESS') {
-    await interaction.reply({ content: 'Este duelo não está em andamento.', ephemeral: true });
-    return;
-  }
-
-  const isParticipant =
-    interaction.user.id === duel.challenger.discordId ||
-    interaction.user.id === duel.opponent.discordId;
-
-  if (!isParticipant) {
-    await interaction.reply({ content: 'Apenas os duelistas podem enviar o resultado.', ephemeral: true });
-    return;
-  }
-
+  const { duel } = result;
   const formatHint = duel.format === 'MD1' ? '1-0' : '2-0 ou 2-1';
 
   const modal = new ModalBuilder()

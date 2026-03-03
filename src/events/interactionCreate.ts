@@ -33,7 +33,11 @@ export function registerInteractionEvent(client: Client) {
         return;
       }
     } catch (error) {
-      const interactionId = 'customId' in interaction ? (interaction as any).customId : (interaction as any).commandName;
+      const interactionId = 'customId' in interaction
+        ? (interaction as { customId: string }).customId
+        : 'commandName' in interaction
+          ? (interaction as { commandName: string }).commandName
+          : 'unknown';
       logger.error('Erro ao processar interação', { interactionId, error: String(error) });
       const reply = { content: 'Ocorreu um erro ao processar esta ação.', ephemeral: true };
       if (interaction.isRepliable()) {

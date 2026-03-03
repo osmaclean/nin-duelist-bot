@@ -93,8 +93,8 @@ describe('deploy-commands', () => {
       expect.objectContaining({ body: expect.any(Array) }),
     );
     const body = put.mock.calls[0][1].body;
-    expect(body).toHaveLength(7);
-    expect(body.map((c: any) => c.name)).toEqual(['duel', 'rank', 'mvp', 'pending', 'history', 'profile', 'admin']);
+    expect(body).toHaveLength(8);
+    expect(body.map((c: any) => c.name)).toEqual(['duel', 'rank', 'mvp', 'pending', 'history', 'profile', 'h2h', 'admin']);
     expect(mockLogger.info).toHaveBeenCalledWith('Registrando slash commands');
   });
 

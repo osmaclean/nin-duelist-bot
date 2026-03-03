@@ -40,6 +40,13 @@ const commands = [
     .toJSON(),
 
   new SlashCommandBuilder()
+    .setName('h2h')
+    .setDescription('Ver confronto direto entre dois jogadores')
+    .addUserOption((o) => o.setName('player_a').setDescription('Primeiro jogador').setRequired(true))
+    .addUserOption((o) => o.setName('player_b').setDescription('Segundo jogador').setRequired(true))
+    .toJSON(),
+
+  new SlashCommandBuilder()
     .setName('admin')
     .setDescription('Comandos administrativos')
     .addSubcommand((sub) =>

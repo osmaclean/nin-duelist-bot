@@ -25,6 +25,7 @@ Estado atual do projeto e próximos passos.
 | Resultado enviado | Testemunha |
 | Resultado confirmado | Ambos duelistas |
 | Resultado rejeitado | Ambos duelistas |
+| Duelo expirando (10 min) | Oponente + testemunha |
 | Duelo expirado | Todos (3 participantes) |
 
 ### Infraestrutura
@@ -36,77 +37,166 @@ Estado atual do projeto e próximos passos.
 - Antifarm com UTC correto + filtro por `updatedAt`
 - Pagination com `deferUpdate` antes do guard + clamp de página
 - Logging estruturado (JSON)
-- 36 arquivos de teste, 234 testes
+- `withRetry` com backoff exponencial (`lib/retry.ts`)
+- Cooldown in-memory reutilizável (`lib/cooldown.ts`)
+- `reconcileStaleEmbeds()` no startup
+- Aviso de expiração com 10 min restantes
+- Job health check in-memory (`lib/job-health.ts`) com warn automático
+- Guard de season expirada no `/duel` (rejeita criação no gap de rotação)
+- 40 arquivos de teste, 260 testes
 
 ---
 
-## Próximos Passos — Features
+## Fases de Evolução
 
-### Prioridade 1: Engajamento
+### Fase 1 — Consolidação (dívida técnica + consistência) ✅
 
-#### `/h2h @a @b`
-Confronto direto entre dois jogadores na season atual.
-- Vitórias/derrotas de cada um contra o outro
-- Últimos duelos entre eles com placar
-- Win rate do confronto
+Objetivo: eliminar inconsistências, preparar base para features novas.
 
-#### `/activity`
-Jogadores mais ativos da season.
-- Ranking por número de duelos jogados
-- Útil para identificar engajamento
+#### 1.1 Padronização de handlers
+- [x] Extrair `validateDuelButton` helper compartilhado entre HOF e `submit-result.ts`
+- [x] Remover `as any` desnecessários em `interactionCreate.ts`
+- [x] Extrair `calcStartRank` duplicado entre `rank.ts` e `pagination.ts`
 
-#### `/records`
-Recordes da season atual.
-- Maior streak
-- Melhor win rate (com mínimo de jogos)
-- Mais duelos jogados
+#### 1.2 Limpeza de build e deps
+- [x] Mover `typescript` e `prisma` CLI para `devDependencies`
+- [x] Multi-stage Dockerfile (build stage + runtime stage)
+- [x] `DISCORD_GUILD_ID` tipagem corrigida para `string | undefined`
 
-### Prioridade 2: Admin completo
-
-#### `/admin reopen duel_id reason`
-Reabre duelo travado para `IN_PROGRESS`.
-
-#### `/admin fix-result duel_id winner score reason`
-Corrige resultado confirmado com recálculo transacional de pontos/streak.
-
-#### `/admin force-expire duel_id reason`
-Força expiração de duelo.
-
-#### Infra de auditoria
-- Tabela `AdminActionLog` com snapshots antes/depois
-- `/admin logs duel_id` para consultar histórico de ações
-- Toda ação admin grava reason + admin ID + timestamps
-
-### Prioridade 3: Melhorias de notificação
-- Aviso de duelo perto de expirar (10 min antes)
-- Anti-spam: deduplicação por evento + cooldown por usuário
-- Opção de desativar DMs por usuário (futuro)
-
-### Prioridade 4: Filtros avançados
-- `/history` com filtros `vs:@user`, `from:date`, `to:date`
-- `/history` com paginação por botões para mais de 10 duelos
-- `/pending` com filtro `season: current|all` e `limit`
+#### 1.3 Schema e tipos
+- [x] `channelId` obrigatório no schema + migration incremental
+- [x] `LeaderboardResult` tipo explícito exportado em `ranking.service.ts`
 
 ---
 
-## Dívida Técnica (baixa prioridade)
+### Fase 2 — Resiliência (robustez em produção) ✅
 
-| # | Item | Esforço |
-|---|------|---------|
-| 12 | `DISCORD_GUILD_ID` tipagem — funcional mas semântica poderia ser `string \| undefined` | Trivial |
-| 13 | `channelId` nullable no schema mas sempre populado no `createDuel` | Baixo |
-| 14 | Pontos podem ficar negativos — **decisão de produto: permitido** | N/A |
-| 15 | `typescript` em `dependencies` — mover para `devDependencies` + multi-stage Dockerfile | Trivial |
-| 16 | `as any` desnecessários em `interactionCreate.ts` após `in` check | Trivial |
-| 17 | Cálculo `startRank` duplicado em `rank.ts` e `pagination.ts` | Trivial |
-| 18 | `submit-result.ts` não usa `createDuelButtonHandler` HOF | Médio |
+Objetivo: bot mais confiável, menos edge cases silenciosos.
+
+#### 2.1 Jobs mais robustos
+- [x] `withRetry` helper com backoff exponencial reutilizável (`lib/retry.ts`)
+- [x] Retry em ambos os jobs (`expire-duels`, `season-check`)
+- [x] Log de métricas por ciclo (duelos processados, falhas de embed, duração)
+- [x] Run imediato do expire-duels no startup (reconcilia duelos presos)
+
+#### 2.2 Sincronização embed/banco
+- [x] Log estruturado (warn) quando update de embed falha (duelId, channelId, messageId)
+- [x] `reconcileStaleEmbeds()` no startup: limpa botões de duelos terminais das últimas 24h
+
+#### 2.3 Rate limiting básico
+- [x] `lib/cooldown.ts` — módulo de cooldown in-memory reutilizável
+- [x] Cooldown de 30s por usuário no `/duel` (DUEL_COOLDOWN_MS)
+- [x] Debounce de 5s em botões de ação via HOF (BUTTON_COOLDOWN_MS)
+
+#### 2.4 Aviso de expiração
+- [x] Notificação DM quando duelo está a 10 min de expirar (EXPIRY_WARNING_MS)
+- [x] Flag `expiryWarned` no schema + migration incremental
+- [x] `notifyDuelExpiringSoon()` com fallback para canal
+
+---
+
+### Fase 2.5 — Hardening (edge cases + saúde operacional) ✅
+
+Objetivo: fechar brechas conhecidas antes de adicionar features novas.
+
+#### 2.5.1 Guard de season expirada na criação de duelo
+- [x] Validar `season.endDate <= now()` no comando `/duel` (após `getActiveSeason()`)
+- [x] Retornar erro amigável se season estiver expirada mas job ainda não rodou
+- [x] Teste unitário cobrindo o cenário
+
+#### 2.5.2 Health check de jobs
+- [x] `lib/job-health.ts` — registro in-memory de último ciclo bem-sucedido por job
+- [x] Log `warn` se gap entre ciclos > 2x intervalo esperado
+- [x] Registro no startup log dos jobs registrados (ready.ts)
+- [x] Integração em `expire-duels` e `season-check` (register, check, mark)
+
+---
+
+### Fase 3 — Engajamento (features para a comunidade)
+
+Objetivo: mais motivos para jogadores interagirem com o sistema.
+
+#### 3.1 `/h2h @a @b`
+- [ ] Service: buscar duelos CONFIRMED entre dois jogadores na season
+- [ ] Cálculo: vitórias de cada lado, win rate do confronto
+- [ ] Embed: últimos duelos entre eles com placar
+- [ ] Comando: registrar slash command com 2 params user
+
+#### 3.2 `/activity`
+- [ ] Service: ranking por total de duelos jogados (wins + losses) na season
+- [ ] Embed: top 10 mais ativos com contagem
+- [ ] Comando: registrar slash command
+
+#### 3.3 `/records`
+- [ ] Service: queries para maior streak, melhor win rate (mín. 5 jogos), mais duelos
+- [ ] Embed: recordes da season com holders
+- [ ] Comando: registrar slash command
+
+---
+
+### Fase 4 — Admin completo
+
+Objetivo: ferramentas para moderação sem acesso direto ao banco.
+
+#### 4.1 Infra de auditoria
+- [ ] Criar tabela `AdminActionLog` (action, adminId, duelId, reason, snapshotBefore, snapshotAfter, createdAt)
+- [ ] Migration + Prisma schema update
+- [ ] Service de audit: `logAdminAction()` reutilizável
+- [ ] Migrar `/admin cancel` para usar audit log persistente
+
+#### 4.2 Novos comandos admin
+- [ ] `/admin reopen duel_id reason` — reabrir duelo para IN_PROGRESS
+- [ ] `/admin fix-result duel_id winner score reason` — corrigir resultado com recálculo transacional
+- [ ] `/admin force-expire duel_id reason` — forçar expiração
+- [ ] `/admin logs duel_id` — consultar histórico de ações admin
+
+---
+
+### Fase 5 — Melhorias de notificação
+
+Objetivo: notificações mais inteligentes, menos ruído.
+
+- [ ] Anti-spam: deduplicação por evento + cooldown por usuário
+- [ ] Opção de desativar DMs por usuário (flag no Player)
+- [ ] Notificação de season encerrando (24h antes)
+
+---
+
+### Fase 6 — Filtros avançados
+
+Objetivo: mais controle na consulta de dados.
+
+- [ ] `/history` com filtros `vs:@user`, `from:date`, `to:date`
+- [ ] `/history` com paginação por botões para mais de 10 duelos
+- [ ] `/pending` com filtro `season: current|all` e `limit`
+
+---
+
+## Problemas Conhecidos
+
+| # | Problema | Impacto | Status |
+|---|---------|---------|--------|
+| 1 | ~~Jobs sem retry — falha silenciosa~~ | ~~Duelos presos em PROPOSED~~ | Resolvido (Fase 2.1) |
+| 2 | ~~Embed/botões dessincronizados~~ | ~~Botões de estado anterior~~ | Resolvido (Fase 2.2) |
+| 3 | ~~Sem rate limiting~~ | ~~Spam de /duel~~ | Resolvido (Fase 2.3) |
+| 4 | ~~Season check a cada 5 min — gap onde duelos podem ser criados na season expirada~~ | ~~Edge case raro~~ | Resolvido (Fase 2.5.1) |
+| 5 | Audit trail admin apenas em stdout | Sem accountability persistente | Fase 4.1 |
+| 6 | ~~`submit-result.ts` fora do padrão HOF~~ | ~~Resolvido~~ | Resolvido (Fase 1.1) |
+| 7 | ~~Jobs sem health check — falha silenciosa pós-retry não é detectada~~ | ~~Duelos presos~~ | Resolvido (Fase 2.5.2) |
 
 ---
 
 ## Decisões de Produto Registradas
 
+- **Modo único:** Apenas ranqueado. Modo casual descartado.
+- **Rejeição de resultado:** Volta para IN_PROGRESS (não cancela). Permite resubmissão.
 - **Pontos negativos:** Permitidos. Sem floor em 0.
-- **Anti-farm:** 1 duelo confirmado por par de jogadores por dia (UTC).
+- **Anti-farm:** 1 duelo confirmado por par de jogadores por dia (UTC). Suficiente para o momento.
 - **Season:** 30 dias, fechamento automático, campeão = mais pontos.
 - **Notificações:** DM com fallback para canal. Fire-and-forget.
 - **Admin:** Cargo via `ADMIN_ROLE_IDS` env var. Reason obrigatório.
+- **Escopo:** 1-2 servidores Discord, < 200 jogadores ativos.
+- **Infra:** Supabase free tier (suficiente para a escala), deploy na Railway (avaliando Fly.io).
+- **Monetização:** Não planejada. Projeto comunitário.
+- **Contribuidores:** Apenas os 2 sócios (1 técnico, 1 observador).
+- **Cooldown in-memory:** Aceita perda no restart. Não justifica Redis na escala atual.

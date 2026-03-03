@@ -40,7 +40,7 @@ describe('config', () => {
     await expect(import('./config')).rejects.toThrow('DATABASE_URL');
   });
 
-  it('should default DISCORD_GUILD_ID to empty string when not set', async () => {
+  it('should default DISCORD_GUILD_ID to undefined when not set', async () => {
     vi.resetModules();
     process.env.DISCORD_TOKEN = 'token-x';
     process.env.DISCORD_CLIENT_ID = 'client-x';
@@ -49,6 +49,6 @@ describe('config', () => {
 
     const mod = await import('./config');
 
-    expect(mod.DISCORD_GUILD_ID).toBe('');
+    expect(mod.DISCORD_GUILD_ID).toBeUndefined();
   });
 });

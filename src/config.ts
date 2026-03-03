@@ -10,7 +10,7 @@ function requireEnv(name: string): string {
 
 export const DISCORD_TOKEN = requireEnv('DISCORD_TOKEN');
 export const DISCORD_CLIENT_ID = requireEnv('DISCORD_CLIENT_ID');
-export const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID ?? '';
+export const DISCORD_GUILD_ID: string | undefined = process.env.DISCORD_GUILD_ID;
 
 // Validação eager — Prisma lê DATABASE_URL direto do env, mas queremos falhar rápido
 requireEnv('DATABASE_URL');
@@ -29,6 +29,15 @@ export const SEASON_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
 
 /** Itens por página no ranking */
 export const RANK_PAGE_SIZE = 20;
+
+/** Tempo antes da expiração para enviar aviso (ms) */
+export const EXPIRY_WARNING_MS = 10 * 60 * 1000; // 10 minutos antes de expirar
+
+/** Cooldown para criação de duelo por usuário (ms) */
+export const DUEL_COOLDOWN_MS = 30 * 1000; // 30 segundos
+
+/** Cooldown para botões de ação por usuário (ms) */
+export const BUTTON_COOLDOWN_MS = 5 * 1000; // 5 segundos
 
 /** Pontos por vitória/derrota (ranked) */
 export const POINTS_WIN = 1;

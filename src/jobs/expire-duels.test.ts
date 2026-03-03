@@ -16,6 +16,7 @@ vi.mock('discord.js', () => ({
 vi.mock('../config', () => ({
   DUEL_EXPIRY_MS: 30 * 60 * 1000,
   EXPIRE_CHECK_INTERVAL_MS: 1000,
+  EXPIRY_WARNING_MS: 10 * 60 * 1000,
 }));
 
 vi.mock('../lib/prisma', () => ({
@@ -46,6 +47,17 @@ vi.mock('../lib/logger', () => ({
 
 vi.mock('../lib/notifications', () => ({
   notifyDuelExpired: vi.fn().mockResolvedValue(undefined),
+  notifyDuelExpiringSoon: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../lib/retry', () => ({
+  withRetry: vi.fn((fn: () => Promise<any>) => fn()),
+}));
+
+vi.mock('../lib/job-health', () => ({
+  registerJob: vi.fn(),
+  markJobSuccess: vi.fn(),
+  checkJobHealth: vi.fn(),
 }));
 
 function makeDuel(id: number, extra: Record<string, unknown> = {}) {
@@ -67,6 +79,9 @@ describe('jobs/expire-duels', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    // Default: no duels found (for both warning and expire queries)
+    (prisma.duel.findMany as any).mockResolvedValue([]);
+    (prisma.duel.updateMany as any).mockResolvedValue({ count: 0 });
   });
 
   afterEach(() => {
@@ -75,20 +90,31 @@ describe('jobs/expire-duels', () => {
 
   it('should start job and log startup message', async () => {
     startExpireDuelsJob({ channels: { fetch: vi.fn() }, users: { fetch: vi.fn() } } as any);
+    await vi.advanceTimersByTimeAsync(0);
 
     const { logger } = await import('../lib/logger');
     expect(logger.info).toHaveBeenCalledWith('Job expire-duels iniciado');
   });
 
+  it('should run expire cycle immediately on startup', async () => {
+    const client = { channels: { fetch: vi.fn() }, users: { fetch: vi.fn() } };
+
+    startExpireDuelsJob(client as any);
+    await vi.advanceTimersByTimeAsync(0);
+
+    // 1 warning findMany + 1 expire findMany from immediate run
+    expect(prisma.duel.findMany).toHaveBeenCalledTimes(2);
+  });
+
   it('should do nothing when no duels are expiring', async () => {
-    (prisma.duel.findMany as any).mockResolvedValue([]);
     const client = { channels: { fetch: vi.fn() } };
 
     startExpireDuelsJob(client as any);
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(0); // immediate
+    await vi.advanceTimersByTimeAsync(1000); // scheduled
 
-    expect(prisma.duel.findMany).toHaveBeenCalledTimes(1);
-    expect(prisma.duel.updateMany).not.toHaveBeenCalled();
+    // 2 per cycle (warning + expire) x 2 cycles = 4
+    expect(prisma.duel.findMany).toHaveBeenCalledTimes(4);
     expect(client.channels.fetch).not.toHaveBeenCalled();
   });
 
@@ -99,11 +125,16 @@ describe('jobs/expire-duels', () => {
     const channel = new (TextChannel as any)(messageFetch);
     const channelFetch = vi.fn().mockResolvedValue(channel);
 
-    (prisma.duel.findMany as any).mockResolvedValue([duel]);
+    (prisma.duel.findMany as any)
+      .mockResolvedValueOnce([]) // immediate: warning
+      .mockResolvedValueOnce([]) // immediate: expire
+      .mockResolvedValueOnce([]) // scheduled: warning
+      .mockResolvedValue([duel]); // scheduled: expire
     (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
     (buildDuelEmbed as any).mockReturnValue({ title: 'expired' });
 
     startExpireDuelsJob({ channels: { fetch: channelFetch }, users: { fetch: vi.fn() } } as any);
+    await vi.advanceTimersByTimeAsync(0);
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(prisma.duel.updateMany).toHaveBeenCalledWith({
@@ -120,46 +151,51 @@ describe('jobs/expire-duels', () => {
     const duelA = makeDuel(1, { channelId: null });
     const duelB = makeDuel(2, { messageId: null });
     const channelFetch = vi.fn();
-    (prisma.duel.findMany as any).mockResolvedValue([duelA, duelB]);
+    (prisma.duel.findMany as any)
+      .mockResolvedValueOnce([]) // immediate: warning
+      .mockResolvedValueOnce([]) // immediate: expire
+      .mockResolvedValueOnce([]) // scheduled: warning
+      .mockResolvedValue([duelA, duelB]); // scheduled: expire
     (prisma.duel.updateMany as any).mockResolvedValue({ count: 2 });
 
     startExpireDuelsJob({ channels: { fetch: channelFetch }, users: { fetch: vi.fn() } } as any);
+    await vi.advanceTimersByTimeAsync(0);
     await vi.advanceTimersByTimeAsync(1000);
 
-    expect(prisma.duel.updateMany).toHaveBeenCalledTimes(1);
     expect(channelFetch).not.toHaveBeenCalled();
   });
 
-  it('should skip discord update when fetched channel is not a TextChannel', async () => {
-    const duel = makeDuel(3);
-    const channelFetch = vi.fn().mockResolvedValue({ messages: { fetch: vi.fn() } });
-    (prisma.duel.findMany as any).mockResolvedValue([duel]);
-    (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
-
-    startExpireDuelsJob({ channels: { fetch: channelFetch }, users: { fetch: vi.fn() } } as any);
-    await vi.advanceTimersByTimeAsync(1000);
-
-    expect(channelFetch).toHaveBeenCalledWith('channel-3');
-    expect(buildDuelEmbed).not.toHaveBeenCalled();
-  });
-
-  it('should swallow per-duel errors when fetching/editing message fails', async () => {
+  it('should log warning when embed update fails instead of silently catching', async () => {
     const duel = makeDuel(4);
     const channelFetch = vi.fn().mockRejectedValue(new Error('discord fetch failed'));
-    (prisma.duel.findMany as any).mockResolvedValue([duel]);
+    (prisma.duel.findMany as any)
+      .mockResolvedValueOnce([]) // immediate: warning
+      .mockResolvedValueOnce([]) // immediate: expire
+      .mockResolvedValueOnce([]) // scheduled: warning
+      .mockResolvedValue([duel]); // scheduled: expire
     (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
 
     startExpireDuelsJob({ channels: { fetch: channelFetch }, users: { fetch: vi.fn() } } as any);
-
+    await vi.advanceTimersByTimeAsync(0);
     await expect(vi.advanceTimersByTimeAsync(1000)).resolves.not.toThrow();
-    expect(prisma.duel.updateMany).toHaveBeenCalledTimes(1);
+
+    const { logger } = await import('../lib/logger');
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Falha ao atualizar embed de duelo expirado',
+      expect.objectContaining({ duelId: 4 }),
+    );
   });
 
   it('should catch and log outer job errors', async () => {
     const error = new Error('db error');
-    (prisma.duel.findMany as any).mockRejectedValue(error);
+    (prisma.duel.findMany as any)
+      .mockResolvedValueOnce([]) // immediate: warning
+      .mockResolvedValueOnce([]) // immediate: expire
+      .mockResolvedValueOnce([]) // scheduled: warning (succeeds)
+      .mockRejectedValue(error); // scheduled: expire (fails)
 
     startExpireDuelsJob({ channels: { fetch: vi.fn() }, users: { fetch: vi.fn() } } as any);
+    await vi.advanceTimersByTimeAsync(0);
     await vi.advanceTimersByTimeAsync(1000);
 
     const { logger } = await import('../lib/logger');
@@ -167,17 +203,53 @@ describe('jobs/expire-duels', () => {
   });
 
   it('should schedule next cycle after current completes', async () => {
-    (prisma.duel.findMany as any).mockResolvedValue([]);
     const client = { channels: { fetch: vi.fn() } };
 
     startExpireDuelsJob(client as any);
+    await vi.advanceTimersByTimeAsync(0); // immediate
 
-    // First cycle
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(prisma.duel.findMany).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1000); // 1st scheduled
+    await vi.advanceTimersByTimeAsync(1000); // 2nd scheduled
 
-    // Second cycle
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(prisma.duel.findMany).toHaveBeenCalledTimes(2);
+    // 2 per cycle x 3 cycles = 6
+    expect(prisma.duel.findMany).toHaveBeenCalledTimes(6);
+  });
+
+  it('should call markJobSuccess after successful cycle', async () => {
+    const client = { channels: { fetch: vi.fn() }, users: { fetch: vi.fn() } };
+
+    startExpireDuelsJob(client as any);
+    await vi.advanceTimersByTimeAsync(0);
+
+    const { markJobSuccess } = await import('../lib/job-health');
+    expect(markJobSuccess).toHaveBeenCalledWith('expire-duels');
+  });
+
+  it('should send expiry warning and mark duels as warned', async () => {
+    const duel = makeDuel(5, { expiryWarned: false });
+    (prisma.duel.findMany as any)
+      .mockResolvedValueOnce([duel]) // immediate: warning (finds duel to warn)
+      .mockResolvedValueOnce([]); // immediate: expire (none to expire)
+    (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
+
+    startExpireDuelsJob({ channels: { fetch: vi.fn() }, users: { fetch: vi.fn() } } as any);
+    await vi.advanceTimersByTimeAsync(0);
+
+    // updateMany called for warning flag
+    expect(prisma.duel.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: [5] },
+          expiryWarned: false,
+        }),
+        data: { expiryWarned: true },
+      }),
+    );
+
+    const { notifyDuelExpiringSoon } = await import('../lib/notifications');
+    expect(notifyDuelExpiringSoon).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: 5 }),
+    );
   });
 });

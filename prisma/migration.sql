@@ -150,3 +150,22 @@ CREATE INDEX IF NOT EXISTS "Duel_status_createdAt_idx" ON "Duel"("status", "crea
 
 -- Índice para getLeaderboard (seasonId + ordering)
 CREATE INDEX IF NOT EXISTS "PlayerSeason_leaderboard_idx" ON "PlayerSeason"("seasonId", "points" DESC, "wins" DESC, "peakStreak" DESC);
+
+-- =============================================
+-- Migration incremental: tornar channelId obrigatório
+-- channelId sempre foi populado no createDuel, mas era nullable no schema.
+-- Rodar no SQL Editor do Supabase
+-- =============================================
+
+-- Garantir que não há registros com channelId NULL (preencher com '0' se houver)
+UPDATE "Duel" SET "channelId" = '0' WHERE "channelId" IS NULL;
+
+ALTER TABLE "Duel" ALTER COLUMN "channelId" SET NOT NULL;
+
+-- =============================================
+-- Migration incremental: adicionar flag expiryWarned
+-- Controla se aviso de expiração (10 min) já foi enviado.
+-- Rodar no SQL Editor do Supabase
+-- =============================================
+
+ALTER TABLE "Duel" ADD COLUMN IF NOT EXISTS "expiryWarned" BOOLEAN NOT NULL DEFAULT false;
