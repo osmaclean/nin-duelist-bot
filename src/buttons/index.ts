@@ -6,6 +6,7 @@ import { handleSubmitResult } from './submit-result';
 import { handleConfirmResult } from './confirm-result';
 import { handleRejectResult } from './reject-result';
 import { handleCancelDuel } from './cancel-duel';
+import { handlePickWinner } from './pick-winner';
 
 export const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<void>> = {
   'accept-duel': handleAcceptDuel,
@@ -15,4 +16,5 @@ export const buttonHandlers: Record<string, (i: ButtonInteraction) => Promise<vo
   'confirm-result': handleConfirmResult,
   'reject-result': handleRejectResult,
   'cancel-duel': handleCancelDuel,
+  'pick-winner': handlePickWinner,
 };

@@ -5,9 +5,11 @@ import { buildDuelComponents } from '../lib/components';
 import { notifyWitnessValidation } from '../lib/notifications';
 
 export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction) {
-  const duelId = parseInt(interaction.customId.split(':')[1], 10);
+  const parts = interaction.customId.split(':');
+  const duelId = parseInt(parts[1], 10);
+  const winnerId = parseInt(parts[2], 10);
 
-  if (isNaN(duelId)) {
+  if (isNaN(duelId) || isNaN(winnerId)) {
     await interaction.reply({ content: 'Interação inválida.', ephemeral: true });
     return;
   }
@@ -19,43 +21,31 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
     return;
   }
 
-  const winnerRaw = interaction.fields.getTextInputValue('winner').replace(/[<@!>]/g, '').trim();
-  const scoreWinner = parseInt(interaction.fields.getTextInputValue('score-winner'), 10);
-  const scoreLoser = parseInt(interaction.fields.getTextInputValue('score-loser'), 10);
-
-  // Validate winner ID
-  const validIds = [duel.challenger.discordId, duel.opponent.discordId];
-  if (!validIds.includes(winnerRaw)) {
-    await interaction.reply({
-      content: `ID de vencedor inválido. Use: ${validIds.join(' ou ')}`,
-      ephemeral: true,
-    });
+  // Validate winnerId
+  if (winnerId !== duel.challengerId && winnerId !== duel.opponentId) {
+    await interaction.reply({ content: 'Vencedor inválido.', ephemeral: true });
     return;
   }
 
-  // Validate score
+  const scoreWinner = parseInt(interaction.fields.getTextInputValue('score-winner'), 10);
+  const scoreLoser = parseInt(interaction.fields.getTextInputValue('score-loser'), 10);
+
   if (isNaN(scoreWinner) || isNaN(scoreLoser)) {
     await interaction.reply({ content: 'Placar inválido. Use números inteiros.', ephemeral: true });
     return;
   }
 
+  // MD3 validation: 2-0 or 2-1
   const validScores =
-    duel.format === 'MD1'
-      ? scoreWinner === 1 && scoreLoser === 0
-      : (scoreWinner === 2 && scoreLoser === 0) || (scoreWinner === 2 && scoreLoser === 1);
+    (scoreWinner === 2 && scoreLoser === 0) || (scoreWinner === 2 && scoreLoser === 1);
 
   if (!validScores) {
-    const hint = duel.format === 'MD1' ? '1-0' : '2-0 ou 2-1';
     await interaction.reply({
-      content: `Placar inválido para ${duel.format}. Placares válidos: ${hint}`,
+      content: 'Placar inválido para MD3. Placares válidos: 2-0 ou 2-1',
       ephemeral: true,
     });
     return;
   }
-
-  // Resolve winner player ID
-  const winnerId =
-    winnerRaw === duel.challenger.discordId ? duel.challengerId : duel.opponentId;
 
   await interaction.deferUpdate();
 
@@ -65,10 +55,20 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
     return;
   }
 
-  const embed = buildDuelEmbed(updated);
-  const components = buildDuelComponents(updated);
-
-  await interaction.editReply({ embeds: [embed], components });
+  // Update the original duel message
+  try {
+    if (duel.channelId && duel.messageId) {
+      const channel = await interaction.client.channels.fetch(duel.channelId);
+      if (channel && 'messages' in channel) {
+        const message = await (channel as any).messages.fetch(duel.messageId);
+        const embed = buildDuelEmbed(updated);
+        const components = buildDuelComponents(updated);
+        await message.edit({ embeds: [embed], components });
+      }
+    }
+  } catch {
+    // Channel or message may be deleted
+  }
 
   if (updated.status === 'AWAITING_VALIDATION') {
     notifyWitnessValidation(interaction.client, updated).catch(() => {});

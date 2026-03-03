@@ -1,8 +1,7 @@
 import {
   ButtonInteraction,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
+  ButtonBuilder,
+  ButtonStyle,
   ActionRowBuilder,
 } from 'discord.js';
 import { validateDuelButton } from './handler';
@@ -25,38 +24,21 @@ export async function handleSubmitResult(interaction: ButtonInteraction) {
   }
 
   const { duel } = result;
-  const formatHint = duel.format === 'MD1' ? '1-0' : '2-0 ou 2-1';
 
-  const modal = new ModalBuilder()
-    .setCustomId(`submit-score:${duel.id}`)
-    .setTitle('Enviar Resultado do Duelo');
-
-  const winnerInput = new TextInputBuilder()
-    .setCustomId('winner')
-    .setLabel('Quem venceu? (ID Discord ou @menção)')
-    .setPlaceholder(`${duel.challenger.discordId} ou ${duel.opponent.discordId}`)
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
-
-  const scoreWinnerInput = new TextInputBuilder()
-    .setCustomId('score-winner')
-    .setLabel('Pontos do vencedor')
-    .setPlaceholder(duel.format === 'MD1' ? '1' : '2')
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
-
-  const scoreLoserInput = new TextInputBuilder()
-    .setCustomId('score-loser')
-    .setLabel('Pontos do perdedor')
-    .setPlaceholder(duel.format === 'MD1' ? '0' : '0 ou 1')
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true);
-
-  modal.addComponents(
-    new ActionRowBuilder<TextInputBuilder>().addComponents(winnerInput),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(scoreWinnerInput),
-    new ActionRowBuilder<TextInputBuilder>().addComponents(scoreLoserInput),
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`pick-winner:${duel.id}:${duel.challengerId}`)
+      .setLabel(`${duel.challenger.username}`)
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`pick-winner:${duel.id}:${duel.opponentId}`)
+      .setLabel(`${duel.opponent.username}`)
+      .setStyle(ButtonStyle.Primary),
   );
 
-  await interaction.showModal(modal);
+  await interaction.reply({
+    content: '**Quem venceu o duelo?**',
+    components: [row],
+    ephemeral: true,
+  });
 }
