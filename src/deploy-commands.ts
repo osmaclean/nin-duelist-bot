@@ -60,6 +60,55 @@ const commands = [
         .addIntegerOption((o) => o.setName('duel_id').setDescription('ID do duelo').setRequired(true))
         .addStringOption((o) => o.setName('reason').setDescription('Motivo do cancelamento').setRequired(true)),
     )
+    .addSubcommand((sub) =>
+      sub
+        .setName('reopen')
+        .setDescription('Reabrir um duelo terminal para IN_PROGRESS')
+        .addIntegerOption((o) => o.setName('duel_id').setDescription('ID do duelo').setRequired(true))
+        .addStringOption((o) => o.setName('reason').setDescription('Motivo da reabertura').setRequired(true)),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('force-expire')
+        .setDescription('Forçar expiração de um duelo')
+        .addIntegerOption((o) => o.setName('duel_id').setDescription('ID do duelo').setRequired(true))
+        .addStringOption((o) => o.setName('reason').setDescription('Motivo da expiração').setRequired(true)),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('fix-result')
+        .setDescription('Corrigir resultado de um duelo confirmado')
+        .addIntegerOption((o) => o.setName('duel_id').setDescription('ID do duelo').setRequired(true))
+        .addUserOption((o) => o.setName('winner').setDescription('Novo vencedor').setRequired(true))
+        .addStringOption((o) => o.setName('score').setDescription('Placar (ex: 2-1)').setRequired(true))
+        .addStringOption((o) => o.setName('reason').setDescription('Motivo da correção').setRequired(true)),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('logs')
+        .setDescription('Ver histórico de ações admin em um duelo')
+        .addIntegerOption((o) => o.setName('duel_id').setDescription('ID do duelo').setRequired(true)),
+    )
+    .addSubcommandGroup((group) =>
+      group
+        .setName('season')
+        .setDescription('Gestão de seasons')
+        .addSubcommand((sub) =>
+          sub.setName('status').setDescription('Ver informações da season ativa'),
+        )
+        .addSubcommand((sub) =>
+          sub.setName('end').setDescription('Encerrar a season ativa manualmente'),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName('create')
+            .setDescription('Criar uma nova season')
+            .addStringOption((o) => o.setName('name').setDescription('Nome da season (opcional)'))
+            .addIntegerOption((o) =>
+              o.setName('duration').setDescription('Duração em dias (padrão: 30)').setMinValue(1).setMaxValue(365),
+            ),
+        ),
+    )
     .toJSON(),
 ];
 

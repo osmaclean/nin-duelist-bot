@@ -18,6 +18,24 @@ export async function ensurePlayerSeason(playerId: number, seasonId: number, tx:
   });
 }
 
+/** Reverse the stats applied by a previous confirmResult (for admin fix-result) */
+export async function reverseResult(winnerId: number, loserId: number, seasonId: number, tx: TxClient = prisma) {
+  await Promise.all([
+    tx.$executeRaw(Prisma.sql`
+      UPDATE "PlayerSeason"
+      SET "points" = "points" - ${POINTS_WIN},
+          "wins" = GREATEST("wins" - 1, 0)
+      WHERE "playerId" = ${winnerId} AND "seasonId" = ${seasonId}
+    `),
+    tx.$executeRaw(Prisma.sql`
+      UPDATE "PlayerSeason"
+      SET "points" = "points" - ${POINTS_LOSS},
+          "losses" = GREATEST("losses" - 1, 0)
+      WHERE "playerId" = ${loserId} AND "seasonId" = ${seasonId}
+    `),
+  ]);
+}
+
 export async function applyResult(winnerId: number, loserId: number, seasonId: number, tx: TxClient = prisma) {
   await Promise.all([
     ensurePlayerSeason(winnerId, seasonId, tx),

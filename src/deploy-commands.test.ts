@@ -18,6 +18,10 @@ class FakeOptionBuilder {
     this.data.min = min;
     return this;
   }
+  setMaxValue(max: number) {
+    this.data.max = max;
+    return this;
+  }
   addChoices(...choices: Array<{ name: string; value: string }>) {
     this.data.choices = choices;
     return this;
@@ -51,6 +55,14 @@ class FakeSlashCommandBuilder {
   }
   addSubcommand(cb: (o: FakeSlashCommandBuilder) => FakeSlashCommandBuilder) {
     this.data.options.push(cb(new FakeSlashCommandBuilder()).toJSON());
+    return this;
+  }
+  addSubcommandGroup(cb: (o: FakeSlashCommandBuilder) => FakeSlashCommandBuilder) {
+    this.data.options.push(cb(new FakeSlashCommandBuilder()).toJSON());
+    return this;
+  }
+  setMaxValue(max: number) {
+    this.data.max = max;
     return this;
   }
   toJSON() {

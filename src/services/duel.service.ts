@@ -126,6 +126,41 @@ export async function cancelDuel(duelId: number) {
   return transitionDuel(duelId, ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS'], { status: 'CANCELLED' });
 }
 
+/** Admin: reopen a terminal duel back to IN_PROGRESS, clearing result data */
+export async function reopenDuel(duelId: number) {
+  return transitionDuel(duelId, ['CONFIRMED', 'CANCELLED', 'EXPIRED'], {
+    status: 'IN_PROGRESS',
+    winnerId: null,
+    scoreWinner: null,
+    scoreLoser: null,
+  });
+}
+
+/** Admin: force a duel to EXPIRED regardless of current non-terminal status */
+export async function forceExpireDuel(duelId: number) {
+  return transitionDuel(
+    duelId,
+    ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'AWAITING_VALIDATION'],
+    { status: 'EXPIRED' },
+  );
+}
+
+/** Admin: fix result — set new winner/score in a CONFIRMED duel (within a transaction) */
+export async function adminFixResult(
+  duelId: number,
+  winnerId: number,
+  scoreWinner: number,
+  scoreLoser: number,
+  tx: TxClient = prisma,
+) {
+  const result = await tx.duel.updateMany({
+    where: { id: duelId, status: 'CONFIRMED' },
+    data: { winnerId, scoreWinner, scoreLoser },
+  });
+  if (result.count === 0) return null;
+  return tx.duel.findUnique({ where: { id: duelId }, include: DUEL_INCLUDE });
+}
+
 /** Check if player has an active (non-terminal) duel */
 export async function hasActiveDuel(playerId: number) {
   const terminalStatuses: DuelStatus[] = ['CONFIRMED', 'CANCELLED', 'EXPIRED'];
