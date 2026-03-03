@@ -1,4 +1,4 @@
-import { ButtonInteraction } from 'discord.js';
+import { ButtonInteraction, ActionRowBuilder, ButtonBuilder } from 'discord.js';
 import { getDuelById, DuelWithPlayers } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
@@ -36,6 +36,24 @@ export async function validateDuelButton(
   return { duelId, duel };
 }
 
+/** Disables all buttons in the current message to show immediate feedback */
+function disableAllButtons(interaction: ButtonInteraction): void {
+  const message = interaction.message;
+  if (!message?.components?.length) return;
+
+  const disabledRows = message.components.map((row) => {
+    const newRow = new ActionRowBuilder<ButtonBuilder>();
+    for (const component of row.components) {
+      newRow.addComponents(
+        ButtonBuilder.from(component as any).setDisabled(true),
+      );
+    }
+    return newRow;
+  });
+
+  interaction.editReply({ components: disabledRows }).catch(() => {});
+}
+
 type HandlerConfig = ValidationConfig & {
   execute: (duelId: number, interaction: ButtonInteraction, duel: DuelWithPlayers) => Promise<DuelWithPlayers | null>;
 };
@@ -43,6 +61,9 @@ type HandlerConfig = ValidationConfig & {
 export function createDuelButtonHandler(config: HandlerConfig) {
   return async function (interaction: ButtonInteraction) {
     await interaction.deferUpdate();
+
+    // Immediate visual feedback: disable all buttons
+    disableAllButtons(interaction);
 
     // Debounce: prevent rapid double-clicks
     const cooldownKey = `btn:${interaction.user.id}:${interaction.customId}`;
