@@ -37,7 +37,7 @@ describe('commands/mvp', () => {
     expect(getTopPlayers).not.toHaveBeenCalled();
   });
 
-  it('should render top 5 MVP for active season', async () => {
+  it('should render top 3 MVP for active season', async () => {
     const embed = { data: 'embed' };
     (getActiveSeason as any).mockResolvedValue({ id: 10, number: 3 });
     (getTopPlayers as any).mockResolvedValue([{ player: { discordId: '1' } }]);
@@ -49,7 +49,7 @@ describe('commands/mvp', () => {
 
     await handleMvpCommand(interaction);
 
-    expect(getTopPlayers).toHaveBeenCalledWith(10, 5);
+    expect(getTopPlayers).toHaveBeenCalledWith(10, 3);
     expect(buildMvpEmbed).toHaveBeenCalledWith(3, [{ player: { discordId: '1' } }]);
     expect(interaction.editReply).toHaveBeenCalledWith({ embeds: [embed] });
   });

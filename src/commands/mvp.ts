@@ -12,7 +12,7 @@ export async function handleMvpCommand(interaction: ChatInputCommandInteraction)
     return;
   }
 
-  const top = await getTopPlayers(season.id, 5);
+  const top = await getTopPlayers(season.id, 3);
   const embed = buildMvpEmbed(season.number, top);
 
   await interaction.editReply({ embeds: [embed] });
