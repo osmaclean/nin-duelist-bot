@@ -161,6 +161,43 @@ Exibe o perfil compacto de um jogador com ranking.
 
 ---
 
+#### `/h2h @player_a @player_b`
+
+Exibe o confronto direto entre dois jogadores na season atual.
+
+**Parâmetros:**
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `player_a` | Usuário | Primeiro jogador |
+| `player_b` | Usuário | Segundo jogador |
+
+**Exibição:**
+- Total de duelos entre eles, vitórias e win rate de cada lado
+- Últimos 10 duelos do confronto com placar
+
+---
+
+#### `/activity`
+
+Exibe os 10 jogadores mais ativos da season atual (por total de duelos jogados).
+
+**Exibição:**
+- Ranking por total de duelos (wins + losses)
+- Medalhas para top 3
+
+---
+
+#### `/records`
+
+Exibe os recordes da season atual.
+
+**Exibição:**
+- **Maior Streak** — Jogador com maior sequência de vitórias consecutivas
+- **Melhor Win Rate** — Jogador com maior taxa de vitória (mínimo 5 jogos)
+- **Mais Duelos** — Jogador com mais duelos jogados
+
+---
+
 #### `/admin cancel duel_id reason`
 
 Cancela um duelo forçadamente (apenas para cargos admin).
@@ -242,16 +279,16 @@ Jogador A usa /duel @JogadorB MD1 @Testemunha
 
 O bot posta um embed amarelo com:
 - Informações do duelo (desafiante, oponente, formato, testemunha)
-- Status de aceitação: `Oponente: Pendente` / `Testemunha: Pendente`
-- Botões: **Aceitar Duelo** (oponente) | **Aceitar (Testemunha)** | **Cancelar**
+- Status de aceitação: `Oponente: Pendente`
+- Botões: **Aceitar Duelo** (oponente) | **Cancelar**
 
-Tanto o oponente quanto a testemunha precisam aceitar independentemente. Se ninguém aceitar em **30 minutos**, o duelo expira automaticamente.
+O oponente precisa aceitar para o duelo iniciar. A testemunha não precisa aceitar — ela só participa na validação do resultado. Se o oponente não aceitar em **30 minutos**, o duelo expira automaticamente.
 
 ---
 
 #### Fase 2 — Aceito (`ACCEPTED`)
 
-Quando ambos aceitam, o embed fica azul:
+Quando o oponente aceita, o embed fica azul:
 - Botões: **Iniciar Duelo** | **Cancelar**
 - Qualquer um dos duelistas (desafiante ou oponente) pode iniciar
 
@@ -263,16 +300,10 @@ Após iniciar, o embed fica laranja:
 - Botões: **Enviar Resultado** | **Cancelar**
 - Qualquer duelista pode enviar o resultado
 
-Ao clicar em **Enviar Resultado**, abre um modal do Discord com 3 campos:
-1. **Quem venceu?** — ID Discord ou @menção do vencedor
-2. **Pontos do vencedor** — MD1: `1` | MD3: `2`
-3. **Pontos do perdedor** — MD1: `0` | MD3: `0` ou `1`
+Ao clicar em **Enviar Resultado**, o bot mostra uma mensagem efêmera com 2 botões: os nomes dos jogadores. Clique em quem venceu.
 
-Placares válidos:
-| Formato | Placares aceitos |
-|---|---|
-| MD1 | 1-0 |
-| MD3 | 2-0, 2-1 |
+- **MD1:** O resultado é enviado automaticamente (1-0), sem necessidade de digitar placar.
+- **MD3:** Abre um modal pedindo apenas o placar (pontos do vencedor e perdedor). Placares válidos: 2-0 ou 2-1.
 
 ---
 
@@ -366,7 +397,7 @@ O bot envia DMs automáticas nos eventos importantes do duelo. Se a DM falhar (p
 | Evento | Quem recebe |
 |---|---|
 | Duelo criado | Oponente + testemunha |
-| Todos aceitaram (ACCEPTED) | Ambos duelistas |
+| Oponente aceitou (ACCEPTED) | Ambos duelistas |
 | Resultado enviado | Testemunha |
 | Resultado confirmado | Ambos duelistas |
 | Resultado rejeitado | Ambos duelistas |
@@ -378,14 +409,14 @@ O bot envia DMs automáticas nos eventos importantes do duelo. Se a DM falhar (p
 
 ```
 src/
-├── commands/          # Slash commands (/duel, /rank, /mvp, /pending, /history, /profile, /admin)
+├── commands/          # Slash commands (/duel, /rank, /mvp, /pending, /history, /profile, /h2h, /activity, /records, /admin)
 │   └── index.ts       # Barrel — mapa command → handler
 ├── buttons/           # Button handlers (aceitar, iniciar, cancelar, etc.)
 │   ├── handler.ts     # HOF que elimina boilerplate dos handlers
 │   └── index.ts       # Barrel — mapa action → handler
 ├── modals/            # Modal handlers (submit-score)
 │   └── index.ts       # Barrel — mapa action → handler
-├── services/          # Logica de negocio (duel, player, ranking, season, antifarm, pending, history, profile)
+├── services/          # Logica de negocio (duel, player, ranking, season, antifarm, pending, history, profile, h2h, activity, records)
 ├── lib/               # Utilitarios (embeds, components, logger, prisma, pagination, notifications)
 ├── events/            # Event handlers Discord (ready, interactionCreate)
 ├── jobs/              # Background jobs (expire-duels, season-check)

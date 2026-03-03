@@ -15,6 +15,9 @@ Estado atual do projeto e próximos passos.
 | `/pending` | Duelos que precisam de ação sua |
 | `/history [@player]` | Estatísticas + últimos 10 duelos |
 | `/profile [@player]` | Perfil compacto com ranking |
+| `/h2h @a @b` | Confronto direto entre dois jogadores |
+| `/activity` | Top 10 jogadores mais ativos da season |
+| `/records` | Recordes da season (streak, win rate, duelos) |
 | `/admin cancel duel_id reason` | Cancelar duelo (admin) |
 
 ### Notificações (DM + fallback canal)
@@ -43,7 +46,7 @@ Estado atual do projeto e próximos passos.
 - Aviso de expiração com 10 min restantes
 - Job health check in-memory (`lib/job-health.ts`) com warn automático
 - Guard de season expirada no `/duel` (rejeita criação no gap de rotação)
-- 40 arquivos de teste, 260 testes
+- 47 arquivos de teste, 278 testes
 
 ---
 
@@ -112,25 +115,46 @@ Objetivo: fechar brechas conhecidas antes de adicionar features novas.
 
 ---
 
-### Fase 3 — Engajamento (features para a comunidade)
+### Fase 3 — Engajamento (features para a comunidade) ✅
 
 Objetivo: mais motivos para jogadores interagirem com o sistema.
 
-#### 3.1 `/h2h @a @b`
-- [ ] Service: buscar duelos CONFIRMED entre dois jogadores na season
-- [ ] Cálculo: vitórias de cada lado, win rate do confronto
-- [ ] Embed: últimos duelos entre eles com placar
-- [ ] Comando: registrar slash command com 2 params user
+#### 3.1 `/h2h @a @b` ✅
+- [x] Service: buscar duelos CONFIRMED entre dois jogadores na season
+- [x] Cálculo: vitórias de cada lado, win rate do confronto
+- [x] Embed: últimos duelos entre eles com placar
+- [x] Comando: registrar slash command com 2 params user
 
-#### 3.2 `/activity`
-- [ ] Service: ranking por total de duelos jogados (wins + losses) na season
-- [ ] Embed: top 10 mais ativos com contagem
-- [ ] Comando: registrar slash command
+#### 3.2 `/activity` ✅
+- [x] Service: ranking por total de duelos jogados (wins + losses) na season
+- [x] Embed: top 10 mais ativos com contagem
+- [x] Comando: registrar slash command
 
-#### 3.3 `/records`
-- [ ] Service: queries para maior streak, melhor win rate (mín. 5 jogos), mais duelos
-- [ ] Embed: recordes da season com holders
-- [ ] Comando: registrar slash command
+#### 3.3 `/records` ✅
+- [x] Service: queries para maior streak, melhor win rate (mín. 5 jogos), mais duelos
+- [x] Embed: recordes da season com holders
+- [x] Comando: registrar slash command
+
+---
+
+### Fase 3.5 — UX do fluxo de duelo ✅
+
+Objetivo: simplificar o fluxo de duelo, eliminar fricção desnecessária.
+
+#### 3.5.1 Remover aceite da testemunha ✅
+- [x] `acceptOpponent` → quando oponente aceita, mover direto para ACCEPTED (sem esperar testemunha)
+- [x] Remover botão "Aceitar Testemunha" do embed de PROPOSED
+- [x] Remover `witnessAccepted` da lógica de `tryMoveToAccepted`
+- [x] Testemunha só participa na validação do resultado (AWAITING_VALIDATION)
+- [x] Atualizar `buildDuelComponents` para não mostrar botão de aceite de testemunha
+- [x] Atualizar testes
+
+#### 3.5.2 Substituir modal de resultado por botões ✅
+- [x] Ao clicar "Enviar Resultado", mostrar mensagem efêmera: "Quem venceu?" com 2 botões (nome de cada jogador)
+- [x] Ao clicar no vencedor, abrir modal menor pedindo apenas o placar (score vencedor / score perdedor)
+- [x] Para MD1: pular modal de placar, já que é sempre 1-0 — submeter direto
+- [x] Remover campo de ID do vencedor do modal
+- [x] Atualizar `submit-result.ts`, `submit-score.ts` e testes
 
 ---
 
@@ -149,6 +173,14 @@ Objetivo: ferramentas para moderação sem acesso direto ao banco.
 - [ ] `/admin fix-result duel_id winner score reason` — corrigir resultado com recálculo transacional
 - [ ] `/admin force-expire duel_id reason` — forçar expiração
 - [ ] `/admin logs duel_id` — consultar histórico de ações admin
+
+#### 4.3 Gestão de season (admin)
+- [ ] `/admin season status` — ver season ativa (número, nome, datas, total de duelos, jogadores ativos)
+- [ ] `/admin season end` — encerrar season ativa manualmente, definir top 1/2/3 automaticamente pelo ranking
+- [ ] `/admin season create name duration` — criar nova season com nome e duração
+- [ ] Adicionar coluna `name` (TEXT, nullable) na tabela Season + migration SQL
+- [ ] Encerrar season: marcar `active = false`, calcular e persistir campeão (top 1)
+- [ ] Embed de encerramento com pódio (top 3) enviado no canal
 
 ---
 
@@ -181,6 +213,9 @@ Objetivo: mais controle na consulta de dados.
 | 3 | ~~Sem rate limiting~~ | ~~Spam de /duel~~ | Resolvido (Fase 2.3) |
 | 4 | ~~Season check a cada 5 min — gap onde duelos podem ser criados na season expirada~~ | ~~Edge case raro~~ | Resolvido (Fase 2.5.1) |
 | 5 | Audit trail admin apenas em stdout | Sem accountability persistente | Fase 4.1 |
+| 8 | ~~Modal de resultado pede ID Discord do vencedor~~ | ~~UX ruim~~ | Resolvido (Fase 3.5.2) |
+| 9 | ~~Testemunha precisa aceitar para duelo iniciar~~ | ~~Fricção desnecessária~~ | Resolvido (Fase 3.5.1) |
+| 10 | Sem gestão de season pelo Discord | Admin precisa acessar SQL Editor | Fase 4.3 |
 | 6 | ~~`submit-result.ts` fora do padrão HOF~~ | ~~Resolvido~~ | Resolvido (Fase 1.1) |
 | 7 | ~~Jobs sem health check — falha silenciosa pós-retry não é detectada~~ | ~~Duelos presos~~ | Resolvido (Fase 2.5.2) |
 
@@ -200,3 +235,6 @@ Objetivo: mais controle na consulta de dados.
 - **Monetização:** Não planejada. Projeto comunitário.
 - **Contribuidores:** Apenas os 2 sócios (1 técnico, 1 observador).
 - **Cooldown in-memory:** Aceita perda no restart. Não justifica Redis na escala atual.
+- **Testemunha:** Não precisa aceitar para o duelo iniciar. Só valida resultado. Escolha é de comum acordo.
+- **Resultado:** Sem campo de ID. Botões com nomes dos jogadores ("Quem venceu?"). MD1 auto-submete 1-0.
+- **Season admin:** Encerramento define top 3 automaticamente pelo ranking. Coluna `name` adicionada à Season.
