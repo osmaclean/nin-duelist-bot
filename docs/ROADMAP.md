@@ -11,7 +11,7 @@ Estado atual do projeto e próximos passos.
 |---|---|
 | `/duel @oponente formato @testemunha` | Criar duelo ranqueado |
 | `/rank [page]` | Ranking paginado da season |
-| `/mvp` | Top 5 da season |
+| `/mvp` | Top 3 da season |
 | `/pending` | Duelos que precisam de ação sua |
 | `/history [@player]` | Estatísticas + últimos 10 duelos |
 | `/profile [@player]` | Perfil compacto com ranking |
@@ -19,6 +19,13 @@ Estado atual do projeto e próximos passos.
 | `/activity` | Top 10 jogadores mais ativos da season |
 | `/records` | Recordes da season (streak, win rate, duelos) |
 | `/admin cancel duel_id reason` | Cancelar duelo (admin) |
+| `/admin reopen duel_id reason` | Reabrir duelo terminal (admin) |
+| `/admin force-expire duel_id reason` | Forçar expiração (admin) |
+| `/admin fix-result duel_id winner score reason` | Corrigir resultado (admin) |
+| `/admin logs duel_id` | Histórico de ações admin |
+| `/admin season status` | Info da season ativa (admin) |
+| `/admin season end` | Encerrar season (admin) |
+| `/admin season create [name] [duration]` | Criar nova season (admin) |
 
 ### Notificações (DM + fallback canal)
 | Evento | Destinatários |
@@ -46,7 +53,7 @@ Estado atual do projeto e próximos passos.
 - Aviso de expiração com 10 min restantes
 - Job health check in-memory (`lib/job-health.ts`) com warn automático
 - Guard de season expirada no `/duel` (rejeita criação no gap de rotação)
-- 47 arquivos de teste, 278 testes
+- 48 arquivos de teste, 313 testes
 
 ---
 
@@ -158,29 +165,29 @@ Objetivo: simplificar o fluxo de duelo, eliminar fricção desnecessária.
 
 ---
 
-### Fase 4 — Admin completo
+### Fase 4 — Admin completo ✅
 
 Objetivo: ferramentas para moderação sem acesso direto ao banco.
 
-#### 4.1 Infra de auditoria
-- [ ] Criar tabela `AdminActionLog` (action, adminId, duelId, reason, snapshotBefore, snapshotAfter, createdAt)
-- [ ] Migration + Prisma schema update
-- [ ] Service de audit: `logAdminAction()` reutilizável
-- [ ] Migrar `/admin cancel` para usar audit log persistente
+#### 4.1 Infra de auditoria ✅
+- [x] Criar tabela `AdminActionLog` (action, adminDiscordId, duelId, reason, previousStatus, newStatus, createdAt)
+- [x] Migration SQL incremental + Prisma schema update
+- [x] Service de audit: `logAdminAction()` e `getAdminLogs()` reutilizáveis
+- [x] Migrar `/admin cancel` para usar audit log persistente (mantém log stdout também)
 
-#### 4.2 Novos comandos admin
-- [ ] `/admin reopen duel_id reason` — reabrir duelo para IN_PROGRESS
-- [ ] `/admin fix-result duel_id winner score reason` — corrigir resultado com recálculo transacional
-- [ ] `/admin force-expire duel_id reason` — forçar expiração
-- [ ] `/admin logs duel_id` — consultar histórico de ações admin
+#### 4.2 Novos comandos admin ✅
+- [x] `/admin reopen duel_id reason` — reabrir duelo para IN_PROGRESS (reverte stats se CONFIRMED)
+- [x] `/admin fix-result duel_id winner score reason` — corrigir resultado com recálculo transacional
+- [x] `/admin force-expire duel_id reason` — forçar expiração de duelo não-terminal
+- [x] `/admin logs duel_id` — consultar histórico de ações admin
 
-#### 4.3 Gestão de season (admin)
-- [ ] `/admin season status` — ver season ativa (número, nome, datas, total de duelos, jogadores ativos)
-- [ ] `/admin season end` — encerrar season ativa manualmente, definir top 1/2/3 automaticamente pelo ranking
-- [ ] `/admin season create name duration` — criar nova season com nome e duração
-- [ ] Adicionar coluna `name` (TEXT, nullable) na tabela Season + migration SQL
-- [ ] Encerrar season: marcar `active = false`, calcular e persistir campeão (top 1)
-- [ ] Embed de encerramento com pódio (top 3) enviado no canal
+#### 4.3 Gestão de season (admin) ✅
+- [x] `/admin season status` — ver season ativa (número, nome, datas, total de duelos, jogadores ativos)
+- [x] `/admin season end` — encerrar season ativa manualmente, definir top 1/2/3 automaticamente pelo ranking
+- [x] `/admin season create name duration` — criar nova season com nome e duração customizada
+- [x] Adicionar coluna `name` (TEXT, nullable) na tabela Season + migration SQL
+- [x] Encerrar season: marcar `active = false`, calcular e persistir campeão (top 1)
+- [x] Embed de encerramento com pódio (top 3) enviado no canal
 
 ---
 
@@ -212,10 +219,10 @@ Objetivo: mais controle na consulta de dados.
 | 2 | ~~Embed/botões dessincronizados~~ | ~~Botões de estado anterior~~ | Resolvido (Fase 2.2) |
 | 3 | ~~Sem rate limiting~~ | ~~Spam de /duel~~ | Resolvido (Fase 2.3) |
 | 4 | ~~Season check a cada 5 min — gap onde duelos podem ser criados na season expirada~~ | ~~Edge case raro~~ | Resolvido (Fase 2.5.1) |
-| 5 | Audit trail admin apenas em stdout | Sem accountability persistente | Fase 4.1 |
+| 5 | ~~Audit trail admin apenas em stdout~~ | ~~Sem accountability persistente~~ | Resolvido (Fase 4.1) |
 | 8 | ~~Modal de resultado pede ID Discord do vencedor~~ | ~~UX ruim~~ | Resolvido (Fase 3.5.2) |
 | 9 | ~~Testemunha precisa aceitar para duelo iniciar~~ | ~~Fricção desnecessária~~ | Resolvido (Fase 3.5.1) |
-| 10 | Sem gestão de season pelo Discord | Admin precisa acessar SQL Editor | Fase 4.3 |
+| 10 | ~~Sem gestão de season pelo Discord~~ | ~~Admin precisa acessar SQL Editor~~ | Resolvido (Fase 4.3) |
 | 6 | ~~`submit-result.ts` fora do padrão HOF~~ | ~~Resolvido~~ | Resolvido (Fase 1.1) |
 | 7 | ~~Jobs sem health check — falha silenciosa pós-retry não é detectada~~ | ~~Duelos presos~~ | Resolvido (Fase 2.5.2) |
 

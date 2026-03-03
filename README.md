@@ -209,9 +209,112 @@ Cancela um duelo forçadamente (apenas para cargos admin).
 | `reason` | Texto | Motivo do cancelamento |
 
 **Requisitos:**
-- Usuário deve possuir um dos cargos listados em `ADMIN_ROLE_IDS`
 - Duelo não pode estar em estado terminal (`CONFIRMED`, `CANCELLED`, `EXPIRED`)
-- Ação é logada com ID do admin, motivo e status anterior
+
+---
+
+#### `/admin reopen duel_id reason`
+
+Reabre um duelo em estado terminal para `IN_PROGRESS`.
+
+**Parâmetros:**
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `duel_id` | Inteiro | ID do duelo a reabrir |
+| `reason` | Texto | Motivo da reabertura |
+
+**Comportamento:**
+- Se o duelo estava `CONFIRMED`, reverte os pontos/wins/losses dos jogadores
+- Limpa resultado (winnerId, score) ao reabrir
+- Duelo volta para `IN_PROGRESS`, permitindo novo envio de resultado
+
+---
+
+#### `/admin force-expire duel_id reason`
+
+Força a expiração de um duelo não-terminal.
+
+**Parâmetros:**
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `duel_id` | Inteiro | ID do duelo a expirar |
+| `reason` | Texto | Motivo da expiração forçada |
+
+---
+
+#### `/admin fix-result duel_id winner score reason`
+
+Corrige o resultado de um duelo já confirmado, recalculando pontos automaticamente.
+
+**Parâmetros:**
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `duel_id` | Inteiro | ID do duelo a corrigir |
+| `winner` | Usuário | Novo vencedor (deve ser participante do duelo) |
+| `score` | Texto | Novo placar no formato `W-L` (ex: `2-1`) |
+| `reason` | Texto | Motivo da correção |
+
+**Comportamento:**
+- Reverte os pontos do resultado antigo e aplica os novos, tudo em uma transação atômica
+- O duelo permanece em `CONFIRMED`
+
+---
+
+#### `/admin logs duel_id`
+
+Exibe o histórico de ações admin em um duelo.
+
+**Parâmetros:**
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `duel_id` | Inteiro | ID do duelo |
+
+**Exibição:**
+- Data, ação, transição de status, admin responsável e motivo
+
+---
+
+#### `/admin season status`
+
+Exibe informações da season ativa.
+
+**Exibição:**
+- Número e nome da season, datas de início/término, dias restantes
+- Total de duelos e jogadores ativos
+
+---
+
+#### `/admin season end`
+
+Encerra a season ativa manualmente.
+
+**Comportamento:**
+- Cancela todos os duelos não-finalizados
+- Calcula automaticamente o pódio (top 3) pelo ranking
+- Define o campeão (top 1) na season
+- Envia embed público com pódio no canal
+
+---
+
+#### `/admin season create [name] [duration]`
+
+Cria uma nova season.
+
+**Parâmetros:**
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `name` | Texto (opcional) | Nome da season |
+| `duration` | Inteiro (opcional) | Duração em dias (padrão: 30, máx: 365) |
+
+**Requisitos:**
+- Não pode haver outra season ativa (encerre a anterior primeiro)
+
+---
+
+**Requisitos comuns a todos os comandos admin:**
+- Usuário deve possuir um dos cargos listados em `ADMIN_ROLE_IDS`
+- Todas as ações são registradas no audit log persistente (`AdminActionLog`)
+- O embed original do duelo é atualizado automaticamente quando possível
 
 ---
 
@@ -261,9 +364,9 @@ Botões de **Anterior** / **Próxima** para navegar entre páginas.
 
 #### `/mvp`
 
-Exibe os 5 melhores jogadores da season atual.
+Exibe os 3 melhores jogadores da season atual.
 
-Mesmo formato do ranking, mas limitado ao top 5 e destacando o **Peak Streak** (maior sequência de vitórias).
+Mesmo formato do ranking, mas limitado ao top 3 (pódio) e destacando o **Peak Streak** (maior sequência de vitórias).
 
 ---
 
