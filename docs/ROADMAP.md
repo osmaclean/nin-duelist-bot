@@ -28,6 +28,7 @@ Estado atual do projeto e próximos passos.
 | `/admin season create [name] [duration]` | Criar nova season (admin) |
 | `/admin search player @player` | Buscar duelos de um jogador (admin) |
 | `/admin search status STATUS` | Buscar duelos por status (admin) |
+| `/settings notifications on\|off` | Ativar/desativar DMs do bot |
 
 ### Notificações (DM + fallback canal)
 | Evento | Destinatários |
@@ -39,6 +40,11 @@ Estado atual do projeto e próximos passos.
 | Resultado rejeitado | Ambos duelistas |
 | Duelo expirando (10 min) | Oponente + testemunha |
 | Duelo expirado | Todos (3 participantes) |
+| Admin cancelou duelo | Ambos duelistas |
+| Admin reabriu duelo | Ambos duelistas |
+| Admin forçou expiração | Ambos duelistas |
+| Admin corrigiu resultado | Ambos duelistas |
+| Season encerrando (24h) | Todos os jogadores ativos da season |
 
 ### Infraestrutura
 - Validação de env vars no startup (`requireEnv`)
@@ -55,7 +61,10 @@ Estado atual do projeto e próximos passos.
 - Aviso de expiração com 10 min restantes
 - Job health check in-memory (`lib/job-health.ts`) com warn automático
 - Guard de season expirada no `/duel` (rejeita criação no gap de rotação)
-- 49 arquivos de teste, 322 testes
+- Anti-spam: cooldown por usuário por tipo de evento (`NOTIFICATION_COOLDOWN_MS`)
+- Opt-out de DMs: campo `dmEnabled` no Player, fallback para canal se desativado
+- Aviso de season encerrando 24h antes (flag `endingNotificationSent` na Season)
+- 50 arquivos de teste, 339 testes
 - CI: GitHub Actions (`ci.yml`) — lint, typecheck, tests em push/PR
 - ESLint (`typescript-eslint` flat config) + Prettier
 
@@ -207,7 +216,7 @@ Objetivo: garantir que nenhum push quebre produção. Testes e lint rodando ante
 - [x] Workflow `ci.yml`: rodar `npm test` em todo push/PR para `main`
 - [x] Rodar `tsc --noEmit` para checar tipos sem compilar
 - [x] Cache de `node_modules` no CI para velocidade
-- [ ] Badge de status no README (adicionar após primeiro run do workflow)
+- [ ] Badge de status no README
 
 #### 4.5.2 Lint e formatação ✅
 - [x] ESLint com `typescript-eslint` (flat config, `eslint.config.mjs`)
@@ -216,19 +225,44 @@ Objetivo: garantir que nenhum push quebre produção. Testes e lint rodando ante
 - [x] Step de lint no workflow de CI
 - [x] Scripts: `npm run lint`, `npm run lint:fix`, `npm run format`, `npm run format:check`
 
-#### 4.5.3 Proteção de branch
-- [ ] Branch protection rule: CI precisa passar antes de merge na `main` (configurar manualmente no GitHub)
-- [ ] Bloquear push direto na `main` (forçar PRs) (configurar manualmente no GitHub)
+#### 4.5.3 Proteção de branch ✅
+- [x] Ruleset `main-protection` ativo no GitHub (repo público)
+- [x] Restrict deletions, block force pushes
+- [x] Require a pull request before merging (0 approvals, squash only)
+- [x] Require status checks to pass (`Lint, Typecheck & Test`, branches up to date)
+- [x] Bypass: Repository admin (emergência)
 
 ---
 
-### Fase 5 — Melhorias de notificação
+### Fase 5 — Melhorias de notificação ✅
 
-Objetivo: notificações mais inteligentes, menos ruído.
+Objetivo: notificações mais inteligentes, menos ruído, admin visível.
 
-- [ ] Anti-spam: deduplicação por evento + cooldown por usuário
-- [ ] Opção de desativar DMs por usuário (flag no Player)
-- [ ] Notificação de season encerrando (24h antes)
+#### 5.1 Notificações de ações admin ✅
+- [x] Notificar duelistas ao `/admin cancel` (mensagem com reason)
+- [x] Notificar duelistas ao `/admin reopen` (mensagem com reason)
+- [x] Notificar duelistas ao `/admin force-expire` (mensagem com reason)
+- [x] Notificar duelistas ao `/admin fix-result` (mensagem com novo resultado e reason)
+- [x] Testes para todas as notificações admin
+
+#### 5.2 Anti-spam: deduplicação por evento + cooldown por usuário ✅
+- [x] Cooldown de notificação por usuário por tipo de evento (reutilizar `lib/cooldown.ts`)
+- [x] Constante `NOTIFICATION_COOLDOWN_MS` em `config.ts` (5 minutos)
+- [x] Testes para deduplicação
+
+#### 5.3 Opt-out de DMs por usuário ✅
+- [x] Migration: adicionar coluna `dmEnabled` (Boolean, default true) no Player (campo simples, sem JSON de preferências — se precisar de mais preferências no futuro, adiciona colunas novas)
+- [x] Check `dmEnabled` em `sendDmWithFallback` antes de enviar DM (fallback para canal se desativado)
+- [x] Comando `/settings notifications on|off` para o usuário controlar
+- [x] Testes para opt-out
+
+#### 5.4 Notificação de season encerrando (24h antes) ✅
+- [x] Migration: adicionar coluna `endingNotificationSent` (Boolean, default false) na Season
+- [x] Função `notifySeasonEnding(client, season)` em `notifications.ts`
+- [x] Constante `SEASON_ENDING_WARNING_MS` em `config.ts` (24 horas)
+- [x] Check no job `season-check`: se `endDate - now() <= 24h` e flag false → enviar e marcar true
+- [x] `markSeasonEndingNotified()` no `season.service.ts`
+- [x] Testes para notificação de season encerrando
 
 ---
 
@@ -255,6 +289,7 @@ Objetivo: saber o que está acontecendo em produção sem cavar logs manualmente
 - [ ] Webhook Discord para canal privado de ops: alertas de erros críticos (job falhou após retries, DB inacessível)
 - [ ] Alerta quando gap de job health > threshold (já detectado pelo `job-health.ts`, falta notificar)
 - [ ] Alerta de season não rotacionada (endDate passou + 30min sem nova season)
+- [ ] Métricas de sucesso/falha de notificações (DM enviadas, fallbacks acionados, falhas silenciosas)
 
 #### 7.3 Logging aprimorado
 - [ ] Correlação de logs por `duelId` e `requestId` (trace distribuído simples)
@@ -273,7 +308,8 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 - [ ] Centralizar validação de formato de duelo (`MD1`/`MD3`) em helper reutilizável
 
 #### 8.2 Tipagem e contratos
-- [ ] Eliminar `as any` remanescentes nos testes (substituir por typed mocks)
+- [ ] Reduzir `as any` no código fonte (13 warnings restantes do ESLint)
+- [x] ~~Corrigir `admin.ts:545` — trocar `status as any` por `status as DuelStatus`~~ (resolvido na Fase 5)
 - [ ] Tipar retornos de services que retornam `any` implícito
 - [ ] Criar tipos discriminados para estados do duelo (DuelProposed, DuelAccepted, etc.) para type safety na máquina de estados
 
@@ -293,11 +329,12 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 | 3 | ~~Sem rate limiting~~ | ~~Spam de /duel~~ | Resolvido (Fase 2.3) |
 | 4 | ~~Season check a cada 5 min — gap onde duelos podem ser criados na season expirada~~ | ~~Edge case raro~~ | Resolvido (Fase 2.5.1) |
 | 5 | ~~Audit trail admin apenas em stdout~~ | ~~Sem accountability persistente~~ | Resolvido (Fase 4.1) |
+| 6 | ~~`submit-result.ts` fora do padrão HOF~~ | ~~Inconsistência~~ | Resolvido (Fase 1.1) |
+| 7 | ~~Jobs sem health check — falha silenciosa pós-retry não é detectada~~ | ~~Duelos presos~~ | Resolvido (Fase 2.5.2) |
 | 8 | ~~Modal de resultado pede ID Discord do vencedor~~ | ~~UX ruim~~ | Resolvido (Fase 3.5.2) |
 | 9 | ~~Testemunha precisa aceitar para duelo iniciar~~ | ~~Fricção desnecessária~~ | Resolvido (Fase 3.5.1) |
 | 10 | ~~Sem gestão de season pelo Discord~~ | ~~Admin precisa acessar SQL Editor~~ | Resolvido (Fase 4.3) |
-| 6 | ~~`submit-result.ts` fora do padrão HOF~~ | ~~Resolvido~~ | Resolvido (Fase 1.1) |
-| 7 | ~~Jobs sem health check — falha silenciosa pós-retry não é detectada~~ | ~~Duelos presos~~ | Resolvido (Fase 2.5.2) |
+| 11 | ~~`notifyDuelExpiringSoon` só notificava oponente, testemunha ficava sem aviso~~ | ~~Testemunha sem ciência da expiração~~ | Resolvido (pré-Fase 5) |
 
 ---
 
@@ -313,9 +350,15 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 - **Escopo:** 1-2 servidores Discord, < 200 jogadores ativos.
 - **Infra:** Supabase free tier (suficiente para a escala), deploy automático na Railway (push → main → deploy).
 - **CI/CD:** GitHub Actions para testes e lint antes do deploy. Railway faz deploy automático após merge na main.
+- **Repositório:** Público no GitHub. Permite branch protection rules sem plano pago.
+- **Branch protection:** Ruleset `main-protection` — PRs obrigatórios, CI deve passar, squash merge only, force push bloqueado.
 - **Monetização:** Não planejada. Projeto comunitário.
-- **Contribuidores:** Apenas os 2 sócios (1 técnico, 1 observador).
+- **Contribuidores:** Apenas os 2 sócios.
 - **Cooldown in-memory:** Aceita perda no restart. Não justifica Redis na escala atual.
 - **Testemunha:** Não precisa aceitar para o duelo iniciar. Só valida resultado. Escolha é de comum acordo.
 - **Resultado:** Sem campo de ID. Botões com nomes dos jogadores ("Quem venceu?"). MD1 auto-submete 1-0.
 - **Season admin:** Encerramento define top 3 automaticamente pelo ranking. Coluna `name` adicionada à Season.
+- **Opt-out DMs:** Campo `dmEnabled` (Boolean) no Player. Sem JSON de preferências — se precisar de mais preferências no futuro, adiciona colunas novas.
+- **Anti-spam notificações:** Cooldown de 5 min por usuário por tipo de evento. In-memory, aceita perda no restart.
+- **Admin notifica:** Todas as ações admin (cancel, reopen, force-expire, fix-result) notificam os duelistas com reason.
+- **Season ending:** Aviso 24h antes do encerramento. Flag `endingNotificationSent` na Season para dedup persistente.

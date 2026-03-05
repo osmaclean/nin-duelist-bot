@@ -96,7 +96,25 @@ npm test
 npm run test:watch
 ```
 
-Testes co-localizados com o código fonte (`*.test.ts`), usando mocks do Vitest. Nenhuma dependência de banco real nos testes.
+50 arquivos de teste, 339 testes. Co-localizados com o código fonte (`*.test.ts`), usando mocks do Vitest. Nenhuma dependência de banco real nos testes.
+
+### Lint e formatação
+
+```bash
+# Lint (ESLint com typescript-eslint)
+npm run lint
+npm run lint:fix
+
+# Formatação (Prettier)
+npm run format
+npm run format:check
+```
+
+### CI/CD
+
+- **GitHub Actions** (`ci.yml`) — Roda lint, typecheck (`tsc --noEmit`) e testes em todo push/PR para `main`
+- **Branch protection** — PRs obrigatórios, CI deve passar, squash merge only, force push bloqueado
+- **Deploy** — Railway faz deploy automático após merge na `main`
 
 ---
 
@@ -195,6 +213,21 @@ Exibe os recordes da season atual.
 - **Maior Streak** — Jogador com maior sequência de vitórias consecutivas
 - **Melhor Win Rate** — Jogador com maior taxa de vitória (mínimo 5 jogos)
 - **Mais Duelos** — Jogador com mais duelos jogados
+
+---
+
+#### `/settings notifications on|off`
+
+Configura suas preferências de notificação.
+
+**Parâmetros:**
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `notifications` | Escolha | `Ativar DMs` ou `Desativar DMs` |
+
+**Comportamento:**
+- `on`: Você recebe notificações por DM (padrão).
+- `off`: DMs desativadas. Notificações são enviadas como menção no canal do duelo.
 
 ---
 
@@ -308,6 +341,28 @@ Cria uma nova season.
 
 **Requisitos:**
 - Não pode haver outra season ativa (encerre a anterior primeiro)
+
+---
+
+#### `/admin search player @player`
+
+Busca os últimos 15 duelos de um jogador (como desafiante, oponente ou testemunha).
+
+**Parâmetros:**
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `player` | Usuário | Jogador para buscar |
+
+---
+
+#### `/admin search status STATUS`
+
+Busca os últimos 15 duelos em um status específico.
+
+**Parâmetros:**
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `status` | Escolha | Status do duelo (PROPOSED, ACCEPTED, IN_PROGRESS, AWAITING_VALIDATION, CONFIRMED, CANCELLED, EXPIRED) |
 
 ---
 
@@ -495,7 +550,11 @@ Para evitar abuso de pontuação, existe uma regra simples: **o mesmo par de jog
 
 ### Notificações
 
-O bot envia DMs automáticas nos eventos importantes do duelo. Se a DM falhar (privacidade desativada), faz fallback com menção no canal do duelo.
+O bot envia DMs automáticas nos eventos importantes do duelo. Se a DM falhar (privacidade desativada) ou o jogador tiver desativado DMs via `/settings`, faz fallback com menção no canal do duelo.
+
+**Anti-spam:** Cada notificação tem cooldown de 5 minutos por usuário por tipo de evento. Notificações repetidas dentro desse período são suprimidas.
+
+**Opt-out:** Jogadores podem desativar DMs com `/settings notifications off`. Todas as notificações passam a ser enviadas como menção no canal.
 
 | Evento | Quem recebe |
 |---|---|
@@ -504,7 +563,13 @@ O bot envia DMs automáticas nos eventos importantes do duelo. Se a DM falhar (p
 | Resultado enviado | Testemunha |
 | Resultado confirmado | Ambos duelistas |
 | Resultado rejeitado | Ambos duelistas |
+| Duelo expirando (10 min restantes) | Oponente + testemunha |
 | Duelo expirado | Todos (3 participantes) |
+| Admin cancelou duelo | Ambos duelistas |
+| Admin reabriu duelo | Ambos duelistas |
+| Admin forçou expiração | Ambos duelistas |
+| Admin corrigiu resultado | Ambos duelistas |
+| Season encerrando (24h) | Todos os jogadores ativos da season |
 
 ---
 
@@ -512,15 +577,15 @@ O bot envia DMs automáticas nos eventos importantes do duelo. Se a DM falhar (p
 
 ```
 src/
-├── commands/          # Slash commands (/duel, /rank, /mvp, /pending, /history, /profile, /h2h, /activity, /records, /admin)
+├── commands/          # Slash commands (/duel, /rank, /mvp, /pending, /history, /profile, /h2h, /activity, /records, /settings, /admin)
 │   └── index.ts       # Barrel — mapa command → handler
 ├── buttons/           # Button handlers (aceitar, iniciar, cancelar, etc.)
 │   ├── handler.ts     # HOF que elimina boilerplate dos handlers
 │   └── index.ts       # Barrel — mapa action → handler
 ├── modals/            # Modal handlers (submit-score)
 │   └── index.ts       # Barrel — mapa action → handler
-├── services/          # Logica de negocio (duel, player, ranking, season, antifarm, pending, history, profile, h2h, activity, records)
-├── lib/               # Utilitarios (embeds, components, logger, prisma, pagination, notifications)
+├── services/          # Logica de negocio (duel, player, ranking, season, antifarm, pending, history, profile, h2h, activity, records, audit, search)
+├── lib/               # Utilitarios (embeds, components, logger, prisma, pagination, notifications, cooldown, retry, job-health)
 ├── events/            # Event handlers Discord (ready, interactionCreate)
 ├── jobs/              # Background jobs (expire-duels, season-check)
 ├── config.ts          # Constantes e validação de env vars
@@ -537,6 +602,10 @@ src/
 - **Embed único editado in-place** — Cada duelo tem um embed persistente que é atualizado via `channelId` + `messageId`. Botões mudam dinamicamente conforme o estado.
 - **Auto-discovery de handlers** — Barrel files (`index.ts`) exportam mapas `Record<string, handler>`. O roteador em `interactionCreate.ts` faz lookup direto sem `switch/case`.
 - **Jobs com setTimeout recursivo** — Evita execução concorrente (ao contrário de `setInterval`). Cada ciclo agenda o próximo só após terminar.
+- **Retry com backoff exponencial** — `withRetry` genérico (1s → 2s → 4s) aplicado nos jobs de expiração e season. Falha final é logada e o próximo ciclo tenta novamente.
+- **Cooldown in-memory** — Map genérico key-based para rate limiting. Usado no `/duel` (30s) e nos botões (5s). Aceita perda no restart.
+- **Job health check** — Registro in-memory do último ciclo bem-sucedido por job. Log de warning se gap entre ciclos excede 2x o intervalo esperado.
+- **Reconcile de embeds no startup** — `reconcileStaleEmbeds()` limpa botões de duelos terminais das últimas 24h ao iniciar, evitando embeds desatualizados.
 - **Logging estruturado** — JSON com timestamp, level e context. Sem dependência externa.
 
 ---
@@ -549,9 +618,14 @@ Constantes configuráveis em `src/config.ts`:
 |---|---|---|
 | `SEASON_DURATION_DAYS` | 30 | Duração de uma season em dias |
 | `DUEL_EXPIRY_MS` | 30 min | Tempo para aceitar antes de expirar |
+| `EXPIRY_WARNING_MS` | 10 min | Tempo antes da expiração para enviar aviso |
 | `EXPIRE_CHECK_INTERVAL_MS` | 1 min | Intervalo do job de expiração |
 | `SEASON_CHECK_INTERVAL_MS` | 5 min | Intervalo do job de verificação de season |
 | `RANK_PAGE_SIZE` | 20 | Jogadores por página no ranking |
+| `DUEL_COOLDOWN_MS` | 30 seg | Cooldown entre criações de duelo por usuário |
+| `BUTTON_COOLDOWN_MS` | 5 seg | Debounce em botões de ação |
+| `NOTIFICATION_COOLDOWN_MS` | 5 min | Cooldown de notificação por usuário por evento |
+| `SEASON_ENDING_WARNING_MS` | 24h | Tempo antes do fim da season para enviar aviso |
 | `POINTS_WIN` | +1 | Pontos por vitória |
 | `POINTS_LOSS` | -1 | Pontos por derrota |
 
