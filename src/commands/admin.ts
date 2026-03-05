@@ -1,4 +1,5 @@
 import { ChatInputCommandInteraction, EmbedBuilder, Colors } from 'discord.js';
+import { DuelStatus } from '@prisma/client';
 import { getDuelById, cancelDuel, reopenDuel, forceExpireDuel, adminFixResult } from '../services/duel.service';
 import { reverseResult, applyResult } from '../services/player.service';
 import {
@@ -14,6 +15,12 @@ import { ADMIN_ROLE_IDS, SEASON_DURATION_DAYS } from '../config';
 import { logger } from '../lib/logger';
 import { logAdminAction, getAdminLogs } from '../services/audit.service';
 import { prisma } from '../lib/prisma';
+import {
+  notifyAdminCancel,
+  notifyAdminReopen,
+  notifyAdminForceExpire,
+  notifyAdminFixResult,
+} from '../lib/notifications';
 
 function hasAdminRole(interaction: ChatInputCommandInteraction): boolean {
   if (ADMIN_ROLE_IDS.length === 0) return false;
@@ -143,6 +150,8 @@ async function handleAdminCancel(interaction: ChatInputCommandInteraction) {
 
   await updateOriginalEmbed(interaction, duel, cancelled);
 
+  notifyAdminCancel(interaction.client, cancelled, reason).catch(() => {});
+
   await interaction.editReply(
     `Duelo #${duelId} cancelado com sucesso.\n**Motivo:** ${reason}\n**Status anterior:** ${duel.status}`,
   );
@@ -200,6 +209,8 @@ async function handleAdminReopen(interaction: ChatInputCommandInteraction) {
 
   await updateOriginalEmbed(interaction, duel, reopened);
 
+  notifyAdminReopen(interaction.client, reopened, reason).catch(() => {});
+
   await interaction.editReply(
     `Duelo #${duelId} reaberto para IN_PROGRESS.\n**Motivo:** ${reason}\n**Status anterior:** ${duel.status}`,
   );
@@ -248,6 +259,8 @@ async function handleAdminForceExpire(interaction: ChatInputCommandInteraction) 
   });
 
   await updateOriginalEmbed(interaction, duel, expired);
+
+  notifyAdminForceExpire(interaction.client, expired, reason).catch(() => {});
 
   await interaction.editReply(
     `Duelo #${duelId} expirado forçadamente.\n**Motivo:** ${reason}\n**Status anterior:** ${duel.status}`,
@@ -338,6 +351,8 @@ async function handleAdminFixResult(interaction: ChatInputCommandInteraction) {
   });
 
   await updateOriginalEmbed(interaction, duel, fixed);
+
+  notifyAdminFixResult(interaction.client, fixed!, winnerUser.id, scoreWinner, scoreLoser, reason).catch(() => {});
 
   await interaction.editReply(
     `Resultado do duelo #${duelId} corrigido.\n**Novo vencedor:** <@${winnerUser.id}> (${scoreWinner}-${scoreLoser})\n**Motivo:** ${reason}`,
@@ -542,7 +557,7 @@ async function handleSearchStatus(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  const duels = await searchDuelsByStatus(status as any);
+  const duels = await searchDuelsByStatus(status as DuelStatus);
 
   if (duels.length === 0) {
     await interaction.editReply(`Nenhum duelo com status \`${status}\`.`);

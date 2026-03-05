@@ -12,6 +12,12 @@ import {
   adminCreateSeason,
 } from '../services/season.service';
 import { searchDuelsByPlayer, searchDuelsByStatus } from '../services/search.service';
+import {
+  notifyAdminCancel,
+  notifyAdminReopen,
+  notifyAdminForceExpire,
+  notifyAdminFixResult,
+} from '../lib/notifications';
 
 vi.mock('../services/duel.service', () => ({
   getDuelById: vi.fn(),
@@ -50,6 +56,13 @@ vi.mock('../services/season.service', () => ({
 vi.mock('../services/search.service', () => ({
   searchDuelsByPlayer: vi.fn().mockResolvedValue([]),
   searchDuelsByStatus: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../lib/notifications', () => ({
+  notifyAdminCancel: vi.fn().mockResolvedValue(undefined),
+  notifyAdminReopen: vi.fn().mockResolvedValue(undefined),
+  notifyAdminForceExpire: vi.fn().mockResolvedValue(undefined),
+  notifyAdminFixResult: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../lib/prisma', () => ({
@@ -190,9 +203,10 @@ describe('commands/admin', () => {
       expect(i.editReply).toHaveBeenCalledWith('Erro ao cancelar duelo #10.');
     });
 
-    it('should cancel duel, log audit, and reply success', async () => {
+    it('should cancel duel, log audit, notify duelists, and reply success', async () => {
       (getDuelById as any).mockResolvedValue(makeDuel());
-      (cancelDuel as any).mockResolvedValue(makeDuel({ status: 'CANCELLED' }));
+      const cancelled = makeDuel({ status: 'CANCELLED' });
+      (cancelDuel as any).mockResolvedValue(cancelled);
       const i = interaction('cancel');
       await handleAdminCommand(i);
 
@@ -205,6 +219,7 @@ describe('commands/admin', () => {
         previousStatus: 'IN_PROGRESS',
         newStatus: 'CANCELLED',
       });
+      expect(notifyAdminCancel).toHaveBeenCalledWith(i.client, cancelled, 'Motivo teste');
       expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('cancelado com sucesso'));
     });
 
@@ -243,17 +258,19 @@ describe('commands/admin', () => {
       expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('não está em estado terminal'));
     });
 
-    it('should reverse stats when reopening a CONFIRMED duel', async () => {
+    it('should reverse stats when reopening a CONFIRMED duel and notify', async () => {
       (getDuelById as any).mockResolvedValue(
         makeDuel({ status: 'CONFIRMED', winnerId: 1, challengerId: 1, opponentId: 2, seasonId: 1 }),
       );
-      (reopenDuel as any).mockResolvedValue(makeDuel({ status: 'IN_PROGRESS' }));
+      const reopened = makeDuel({ status: 'IN_PROGRESS' });
+      (reopenDuel as any).mockResolvedValue(reopened);
       const i = interaction('reopen');
       await handleAdminCommand(i);
 
       expect(reverseResult).toHaveBeenCalledWith(1, 2, 1);
       expect(reopenDuel).toHaveBeenCalledWith(10);
       expect(logAdminAction).toHaveBeenCalledWith(expect.objectContaining({ action: 'REOPEN_DUEL' }));
+      expect(notifyAdminReopen).toHaveBeenCalledWith(i.client, reopened, 'Motivo teste');
       expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('reaberto para IN_PROGRESS'));
     });
 
@@ -293,9 +310,10 @@ describe('commands/admin', () => {
       expect(i.editReply).toHaveBeenCalledWith('Duelo #10 já está em estado terminal (CONFIRMED).');
     });
 
-    it('should force expire and log audit', async () => {
+    it('should force expire, log audit, and notify duelists', async () => {
       (getDuelById as any).mockResolvedValue(makeDuel({ status: 'AWAITING_VALIDATION' }));
-      (forceExpireDuel as any).mockResolvedValue(makeDuel({ status: 'EXPIRED' }));
+      const expired = makeDuel({ status: 'EXPIRED' });
+      (forceExpireDuel as any).mockResolvedValue(expired);
       const i = interaction('force-expire');
       await handleAdminCommand(i);
 
@@ -307,6 +325,7 @@ describe('commands/admin', () => {
           newStatus: 'EXPIRED',
         }),
       );
+      expect(notifyAdminForceExpire).toHaveBeenCalledWith(i.client, expired, 'Motivo teste');
       expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('expirado forçadamente'));
     });
 
@@ -379,6 +398,7 @@ describe('commands/admin', () => {
           newStatus: 'CONFIRMED',
         }),
       );
+      expect(notifyAdminFixResult).toHaveBeenCalledWith(i.client, fixed, 'u1', 2, 1, 'Motivo teste');
       expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('corrigido'));
     });
   });
