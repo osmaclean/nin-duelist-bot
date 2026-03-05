@@ -26,6 +26,8 @@ Estado atual do projeto e próximos passos.
 | `/admin season status` | Info da season ativa (admin) |
 | `/admin season end` | Encerrar season (admin) |
 | `/admin season create [name] [duration]` | Criar nova season (admin) |
+| `/admin search player @player` | Buscar duelos de um jogador (admin) |
+| `/admin search status STATUS` | Buscar duelos por status (admin) |
 
 ### Notificações (DM + fallback canal)
 | Evento | Destinatários |
@@ -53,7 +55,9 @@ Estado atual do projeto e próximos passos.
 - Aviso de expiração com 10 min restantes
 - Job health check in-memory (`lib/job-health.ts`) com warn automático
 - Guard de season expirada no `/duel` (rejeita criação no gap de rotação)
-- 48 arquivos de teste, 313 testes
+- 49 arquivos de teste, 322 testes
+- CI: GitHub Actions (`ci.yml`) — lint, typecheck, tests em push/PR
+- ESLint (`typescript-eslint` flat config) + Prettier
 
 ---
 
@@ -189,6 +193,33 @@ Objetivo: ferramentas para moderação sem acesso direto ao banco.
 - [x] Encerrar season: marcar `active = false`, calcular e persistir campeão (top 1)
 - [x] Embed de encerramento com pódio (top 3) enviado no canal
 
+#### 4.4 Busca de duelos (admin) ✅
+- [x] `/admin search player @player` — listar últimos 15 duelos de um jogador (como challenger, oponente ou testemunha)
+- [x] `/admin search status STATUS` — listar últimos 15 duelos em um status específico (choices com todos os 7 status)
+
+---
+
+### Fase 4.5 — CI/CD e qualidade automatizada ✅
+
+Objetivo: garantir que nenhum push quebre produção. Testes e lint rodando antes do deploy.
+
+#### 4.5.1 Pipeline de CI (GitHub Actions) ✅
+- [x] Workflow `ci.yml`: rodar `npm test` em todo push/PR para `main`
+- [x] Rodar `tsc --noEmit` para checar tipos sem compilar
+- [x] Cache de `node_modules` no CI para velocidade
+- [ ] Badge de status no README (adicionar após primeiro run do workflow)
+
+#### 4.5.2 Lint e formatação ✅
+- [x] ESLint com `typescript-eslint` (flat config, `eslint.config.mjs`)
+- [x] Prettier com config único (`.prettierrc`)
+- [x] `no-explicit-any` como warning (off em `*.test.ts`)
+- [x] Step de lint no workflow de CI
+- [x] Scripts: `npm run lint`, `npm run lint:fix`, `npm run format`, `npm run format:check`
+
+#### 4.5.3 Proteção de branch
+- [ ] Branch protection rule: CI precisa passar antes de merge na `main` (configurar manualmente no GitHub)
+- [ ] Bloquear push direto na `main` (forçar PRs) (configurar manualmente no GitHub)
+
 ---
 
 ### Fase 5 — Melhorias de notificação
@@ -208,6 +239,48 @@ Objetivo: mais controle na consulta de dados.
 - [ ] `/history` com filtros `vs:@user`, `from:date`, `to:date`
 - [ ] `/history` com paginação por botões para mais de 10 duelos
 - [ ] `/pending` com filtro `season: current|all` e `limit`
+
+---
+
+### Fase 7 — Observabilidade e monitoramento
+
+Objetivo: saber o que está acontecendo em produção sem cavar logs manualmente.
+
+#### 7.1 Monitoramento de saúde
+- [ ] Endpoint HTTP `/health` básico (status do bot, último ciclo dos jobs, uptime)
+- [ ] Health check configurado no Railway para auto-restart em falha
+- [ ] Dashboard simples de métricas (duelos/dia, jogadores ativos, erros) — avaliar Grafana Cloud free ou alternativa leve
+
+#### 7.2 Alertas
+- [ ] Webhook Discord para canal privado de ops: alertas de erros críticos (job falhou após retries, DB inacessível)
+- [ ] Alerta quando gap de job health > threshold (já detectado pelo `job-health.ts`, falta notificar)
+- [ ] Alerta de season não rotacionada (endDate passou + 30min sem nova season)
+
+#### 7.3 Logging aprimorado
+- [ ] Correlação de logs por `duelId` e `requestId` (trace distribuído simples)
+- [ ] Log de métricas agregadas por ciclo de job (já parcial, expandir)
+- [ ] Rotação/retenção de logs no Railway (avaliar custo vs necessidade)
+
+---
+
+### Fase 8 — Dívidas técnicas e hardening
+
+Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
+
+#### 8.1 Validação de input
+- [ ] Sanitizar inputs de texto em commands (reason no admin, nomes em embeds) contra injection em embeds Discord
+- [ ] Validar limites numéricos explícitos em scores (ex: scoreWinner <= 3 para MD3)
+- [ ] Centralizar validação de formato de duelo (`MD1`/`MD3`) em helper reutilizável
+
+#### 8.2 Tipagem e contratos
+- [ ] Eliminar `as any` remanescentes nos testes (substituir por typed mocks)
+- [ ] Tipar retornos de services que retornam `any` implícito
+- [ ] Criar tipos discriminados para estados do duelo (DuelProposed, DuelAccepted, etc.) para type safety na máquina de estados
+
+#### 8.3 Resiliência de estado
+- [ ] Avaliar persistir cooldowns em memória vs aceitar perda no restart (decisão documentada, manter se aceitável)
+- [ ] Timeout de transações Prisma (`$transaction` com `timeout` explícito) para evitar lock infinito
+- [ ] Tratamento de `PrismaClientKnownRequestError` específico (unique constraint, not found) vs erro genérico
 
 ---
 
@@ -238,7 +311,8 @@ Objetivo: mais controle na consulta de dados.
 - **Notificações:** DM com fallback para canal. Fire-and-forget.
 - **Admin:** Cargo via `ADMIN_ROLE_IDS` env var. Reason obrigatório.
 - **Escopo:** 1-2 servidores Discord, < 200 jogadores ativos.
-- **Infra:** Supabase free tier (suficiente para a escala), deploy na Railway (avaliando Fly.io).
+- **Infra:** Supabase free tier (suficiente para a escala), deploy automático na Railway (push → main → deploy).
+- **CI/CD:** GitHub Actions para testes e lint antes do deploy. Railway faz deploy automático após merge na main.
 - **Monetização:** Não planejada. Projeto comunitário.
 - **Contribuidores:** Apenas os 2 sócios (1 técnico, 1 observador).
 - **Cooldown in-memory:** Aceita perda no restart. Não justifica Redis na escala atual.

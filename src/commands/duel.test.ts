@@ -179,9 +179,7 @@ describe('commands/duel', () => {
     await handleDuelCommand(interaction);
 
     expect(interaction.deferReply).toHaveBeenCalledTimes(1);
-    expect(interaction.editReply).toHaveBeenCalledWith(
-      'Você já tem um duelo ativo. Finalize-o antes de criar outro.',
-    );
+    expect(interaction.editReply).toHaveBeenCalledWith('Você já tem um duelo ativo. Finalize-o antes de criar outro.');
     expect(createDuel).not.toHaveBeenCalled();
   });
 

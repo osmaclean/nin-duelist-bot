@@ -12,9 +12,7 @@ function duel(status: string, extra: Record<string, unknown> = {}) {
 }
 
 function buttonLabels(components: any[]) {
-  return components.flatMap((row: any) =>
-    row.components.map((b: any) => b.data.label),
-  );
+  return components.flatMap((row: any) => row.components.map((b: any) => b.data.label));
 }
 
 describe('lib/components', () => {
@@ -56,10 +54,13 @@ describe('lib/components', () => {
   });
 
   it('uses correct duel id in customIds', () => {
-    const result = buildDuelComponents({ id: 42, status: 'ACCEPTED', opponentAccepted: true, witnessAccepted: true } as any);
-    const customIds = result.flatMap((row: any) =>
-      row.components.map((b: any) => b.data.custom_id),
-    );
+    const result = buildDuelComponents({
+      id: 42,
+      status: 'ACCEPTED',
+      opponentAccepted: true,
+      witnessAccepted: true,
+    } as any);
+    const customIds = result.flatMap((row: any) => row.components.map((b: any) => b.data.custom_id));
     expect(customIds).toEqual(['start-duel:42', 'cancel-duel:42']);
   });
 });

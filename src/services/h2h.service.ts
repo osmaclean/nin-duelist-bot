@@ -10,11 +10,7 @@ export type H2hResult = {
   recentDuels: DuelWithPlayers[];
 };
 
-export async function getHeadToHead(
-  discordIdA: string,
-  discordIdB: string,
-  seasonId: number,
-): Promise<H2hResult> {
+export async function getHeadToHead(discordIdA: string, discordIdB: string, seasonId: number): Promise<H2hResult> {
   const [playerA, playerB] = await Promise.all([
     prisma.player.findUnique({ where: { discordId: discordIdA } }),
     prisma.player.findUnique({ where: { discordId: discordIdB } }),

@@ -96,8 +96,14 @@ describe('commands/profile', () => {
   it('should show medal emoji for top 3 ranks', async () => {
     (getActiveSeason as any).mockResolvedValue({ id: 1, number: 1 });
     (getPlayerProfile as any).mockResolvedValue({
-      points: 5, wins: 5, losses: 0, winRate: 100,
-      streak: 5, peakStreak: 5, rank: 2, seasonsPlayed: 1,
+      points: 5,
+      wins: 5,
+      losses: 0,
+      winRate: 100,
+      streak: 5,
+      peakStreak: 5,
+      rank: 2,
+      seasonsPlayed: 1,
     });
     const i = interaction();
 
@@ -110,8 +116,14 @@ describe('commands/profile', () => {
   it('should not show medal for rank > 3', async () => {
     (getActiveSeason as any).mockResolvedValue({ id: 1, number: 1 });
     (getPlayerProfile as any).mockResolvedValue({
-      points: 1, wins: 1, losses: 0, winRate: 100,
-      streak: 1, peakStreak: 1, rank: 5, seasonsPlayed: 1,
+      points: 1,
+      wins: 1,
+      losses: 0,
+      winRate: 100,
+      streak: 1,
+      peakStreak: 1,
+      rank: 5,
+      seasonsPlayed: 1,
     });
     const i = interaction();
 

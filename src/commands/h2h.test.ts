@@ -62,7 +62,12 @@ describe('commands/h2h', () => {
   it('should show simple message when no duels', async () => {
     (getActiveSeason as any).mockResolvedValue({ id: 1, number: 1 });
     (getHeadToHead as any).mockResolvedValue({
-      totalDuels: 0, winsA: 0, winsB: 0, winRateA: 0, winRateB: 0, recentDuels: [],
+      totalDuels: 0,
+      winsA: 0,
+      winsB: 0,
+      winRateA: 0,
+      winRateB: 0,
+      recentDuels: [],
     });
     const i = interaction(mockUser('a'), mockUser('b'));
 

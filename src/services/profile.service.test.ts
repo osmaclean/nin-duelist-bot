@@ -45,7 +45,11 @@ describe('profile.service', () => {
   it('should return full profile with rank and seasons played', async () => {
     (prisma.player.findUnique as any).mockResolvedValue({ id: 1 });
     (prisma.playerSeason.findUnique as any).mockResolvedValue({
-      points: 7, wins: 9, losses: 3, streak: 2, peakStreak: 5,
+      points: 7,
+      wins: 9,
+      losses: 3,
+      streak: 2,
+      peakStreak: 5,
     });
     (prisma.playerSeason.count as any).mockResolvedValue(3);
     (getPlayerRank as any).mockResolvedValue(2);
@@ -68,7 +72,11 @@ describe('profile.service', () => {
   it('should return 0 winRate when no duels', async () => {
     (prisma.player.findUnique as any).mockResolvedValue({ id: 1 });
     (prisma.playerSeason.findUnique as any).mockResolvedValue({
-      points: 0, wins: 0, losses: 0, streak: 0, peakStreak: 0,
+      points: 0,
+      wins: 0,
+      losses: 0,
+      streak: 0,
+      peakStreak: 0,
     });
     (prisma.playerSeason.count as any).mockResolvedValue(1);
     (getPlayerRank as any).mockResolvedValue(1);

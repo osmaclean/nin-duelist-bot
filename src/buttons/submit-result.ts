@@ -1,18 +1,11 @@
-import {
-  ButtonInteraction,
-  ButtonBuilder,
-  ButtonStyle,
-  ActionRowBuilder,
-} from 'discord.js';
+import { ButtonInteraction, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
 import { validateDuelButton } from './handler';
 
 export async function handleSubmitResult(interaction: ButtonInteraction) {
   const result = await validateDuelButton(interaction, {
     expectedStatus: 'IN_PROGRESS',
     permissionCheck: (i, duel) => {
-      const isParticipant =
-        i.user.id === duel.challenger.discordId ||
-        i.user.id === duel.opponent.discordId;
+      const isParticipant = i.user.id === duel.challenger.discordId || i.user.id === duel.opponent.discordId;
       return isParticipant ? null : 'Apenas os duelistas podem enviar o resultado.';
     },
     errorMessage: 'Este duelo não está em andamento.',

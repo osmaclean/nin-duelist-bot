@@ -21,9 +21,7 @@ export async function handleProfileCommand(interaction: ChatInputCommandInteract
 
   const total = profile.wins + profile.losses;
   const rankDisplay = profile.rank ? `#${profile.rank}` : '-';
-  const medal = profile.rank && profile.rank <= 3
-    ? ['\u{1F947}', '\u{1F948}', '\u{1F949}'][profile.rank - 1]
-    : '';
+  const medal = profile.rank && profile.rank <= 3 ? ['\u{1F947}', '\u{1F948}', '\u{1F949}'][profile.rank - 1] : '';
 
   const embed = new EmbedBuilder()
     .setTitle(`${medal} Perfil — ${targetUser.username}`.trim())

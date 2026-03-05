@@ -19,9 +19,7 @@ export async function handleRecordsCommand(interaction: ChatInputCommandInteract
     return;
   }
 
-  const embed = new EmbedBuilder()
-    .setTitle(`Recordes — Season ${season.number}`)
-    .setColor(Colors.Purple);
+  const embed = new EmbedBuilder().setTitle(`Recordes — Season ${season.number}`).setColor(Colors.Purple);
 
   if (records.bestStreak && records.bestStreak.value > 0) {
     embed.addFields({

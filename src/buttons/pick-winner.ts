@@ -1,10 +1,4 @@
-import {
-  ButtonInteraction,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-  ActionRowBuilder,
-} from 'discord.js';
+import { ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
 import { getDuelById, submitResult } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
@@ -70,9 +64,7 @@ export async function handlePickWinner(interaction: ButtonInteraction) {
   }
 
   // MD3: open modal asking only for score
-  const modal = new ModalBuilder()
-    .setCustomId(`submit-score:${duelId}:${winnerId}`)
-    .setTitle('Placar do Duelo');
+  const modal = new ModalBuilder().setCustomId(`submit-score:${duelId}:${winnerId}`).setTitle('Placar do Duelo');
 
   const scoreWinnerInput = new TextInputBuilder()
     .setCustomId('score-winner')

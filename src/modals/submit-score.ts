@@ -36,8 +36,7 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
   }
 
   // MD3 validation: 2-0 or 2-1
-  const validScores =
-    (scoreWinner === 2 && scoreLoser === 0) || (scoreWinner === 2 && scoreLoser === 1);
+  const validScores = (scoreWinner === 2 && scoreLoser === 0) || (scoreWinner === 2 && scoreLoser === 1);
 
   if (!validScores) {
     await interaction.reply({

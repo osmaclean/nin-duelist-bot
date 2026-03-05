@@ -85,9 +85,7 @@ export async function handleDuelCommand(interaction: ChatInputCommandInteraction
   // Anti-farm check
   const allowed = await canDuelToday(challenger.id, opponent.id);
   if (!allowed) {
-    await interaction.editReply(
-      'Vocês já tiveram um duelo confirmado hoje. Tente novamente amanhã.',
-    );
+    await interaction.editReply('Vocês já tiveram um duelo confirmado hoje. Tente novamente amanhã.');
     return;
   }
 

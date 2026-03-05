@@ -16,18 +16,12 @@ export function buildDuelComponents(duel: DuelInfo): ActionRowBuilder<ButtonBuil
 
     if (!duel.opponentAccepted) {
       buttons.push(
-        new ButtonBuilder()
-          .setCustomId(`accept-duel:${id}`)
-          .setLabel('Aceitar Duelo')
-          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`accept-duel:${id}`).setLabel('Aceitar Duelo').setStyle(ButtonStyle.Success),
       );
     }
 
     buttons.push(
-      new ButtonBuilder()
-        .setCustomId(`cancel-duel:${id}`)
-        .setLabel('Cancelar')
-        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId(`cancel-duel:${id}`).setLabel('Cancelar').setStyle(ButtonStyle.Danger),
     );
 
     return [new ActionRowBuilder<ButtonBuilder>().addComponents(buttons)];
@@ -36,14 +30,8 @@ export function buildDuelComponents(duel: DuelInfo): ActionRowBuilder<ButtonBuil
   if (status === 'ACCEPTED') {
     return [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`start-duel:${id}`)
-          .setLabel('Iniciar Duelo')
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId(`cancel-duel:${id}`)
-          .setLabel('Cancelar')
-          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId(`start-duel:${id}`).setLabel('Iniciar Duelo').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(`cancel-duel:${id}`).setLabel('Cancelar').setStyle(ButtonStyle.Danger),
       ),
     ];
   }
@@ -55,10 +43,7 @@ export function buildDuelComponents(duel: DuelInfo): ActionRowBuilder<ButtonBuil
           .setCustomId(`submit-result:${id}`)
           .setLabel('Enviar Resultado')
           .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId(`cancel-duel:${id}`)
-          .setLabel('Cancelar')
-          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId(`cancel-duel:${id}`).setLabel('Cancelar').setStyle(ButtonStyle.Danger),
       ),
     ];
   }

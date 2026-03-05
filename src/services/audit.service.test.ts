@@ -70,9 +70,7 @@ describe('services/audit', () => {
     it('should log error but not throw when create fails', async () => {
       mockCreate.mockRejectedValue(new Error('DB error'));
 
-      await expect(
-        logAdminAction({ action: 'FAIL', adminDiscordId: 'admin3' }),
-      ).resolves.toBeUndefined();
+      await expect(logAdminAction({ action: 'FAIL', adminDiscordId: 'admin3' })).resolves.toBeUndefined();
 
       const { logger } = await import('../lib/logger');
       expect(logger.error).toHaveBeenCalledWith(

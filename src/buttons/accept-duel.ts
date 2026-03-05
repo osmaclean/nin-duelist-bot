@@ -5,9 +5,7 @@ import { notifyDuelAccepted } from '../lib/notifications';
 export const handleAcceptDuel = createDuelButtonHandler({
   expectedStatus: 'PROPOSED',
   permissionCheck: (interaction, duel) =>
-    interaction.user.id !== duel.opponent.discordId
-      ? 'Apenas o oponente pode aceitar o duelo.'
-      : null,
+    interaction.user.id !== duel.opponent.discordId ? 'Apenas o oponente pode aceitar o duelo.' : null,
   execute: async (duelId, interaction) => {
     const updated = await acceptOpponent(duelId);
     if (updated?.status === 'ACCEPTED') {

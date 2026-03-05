@@ -5,12 +5,8 @@ import { getPlayerHistory } from '../services/history.service';
 function formatDuelLine(duel: any, discordId: string): string {
   const isWinner = duel.winner?.discordId === discordId;
   const result = isWinner ? 'V' : 'D';
-  const opponentId = duel.challenger.discordId === discordId
-    ? duel.opponent.discordId
-    : duel.challenger.discordId;
-  const score = isWinner
-    ? `${duel.scoreWinner}-${duel.scoreLoser}`
-    : `${duel.scoreLoser}-${duel.scoreWinner}`;
+  const opponentId = duel.challenger.discordId === discordId ? duel.opponent.discordId : duel.challenger.discordId;
+  const score = isWinner ? `${duel.scoreWinner}-${duel.scoreLoser}` : `${duel.scoreLoser}-${duel.scoreWinner}`;
   const date = duel.updatedAt.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   return `\`${date}\` **${result}** ${score} vs <@${opponentId}>`;
 }

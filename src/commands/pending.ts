@@ -21,9 +21,6 @@ function formatTimeLeft(duel: PendingDuel): string {
 }
 
 function formatDuelLine(duel: PendingDuel): string {
-  const opponent = duel.challenger.discordId === duel.opponent.discordId
-    ? duel.challenger.discordId
-    : `${duel.challenger.discordId}/${duel.opponent.discordId}`;
   const action = ACTION_LABELS[duel.urgency] ?? 'Pendente';
   const time = formatTimeLeft(duel);
   return `**#${duel.id}** — <@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}> | ${action}${time}`;

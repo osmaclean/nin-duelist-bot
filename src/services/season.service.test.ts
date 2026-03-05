@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../lib/prisma';
-import { closeSeason, ensureActiveSeason, getActiveSeason, getSeasonStatus, getSeasonPodium, adminEndSeason, adminCreateSeason } from './season.service';
+import {
+  closeSeason,
+  ensureActiveSeason,
+  getActiveSeason,
+  getSeasonStatus,
+  getSeasonPodium,
+  adminEndSeason,
+  adminCreateSeason,
+} from './season.service';
 import { SEASON_DURATION_DAYS } from '../config';
 
 vi.mock('../lib/logger', () => ({
@@ -171,7 +179,15 @@ describe('season.service', () => {
     });
 
     it('should return season with stats', async () => {
-      const season = { id: 1, number: 3, name: 'Test', startDate: new Date(), endDate: new Date(), active: true, championId: null };
+      const season = {
+        id: 1,
+        number: 3,
+        name: 'Test',
+        startDate: new Date(),
+        endDate: new Date(),
+        active: true,
+        championId: null,
+      };
       (prisma.season.findUnique as any).mockResolvedValue(season);
       (prisma.duel.count as any).mockResolvedValue(42);
       (prisma.playerSeason.count as any).mockResolvedValue(15);
@@ -192,7 +208,15 @@ describe('season.service', () => {
       const result = await getSeasonPodium(1);
 
       expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({ rank: 1, playerId: 1, discordId: 'u1', points: 10, wins: 8, losses: 2, peakStreak: 5 });
+      expect(result[0]).toEqual({
+        rank: 1,
+        playerId: 1,
+        discordId: 'u1',
+        points: 10,
+        wins: 8,
+        losses: 2,
+        peakStreak: 5,
+      });
       expect(result[1].rank).toBe(2);
     });
 
@@ -226,8 +250,12 @@ describe('season.service', () => {
     it('should create season with name and custom duration', async () => {
       (prisma.season.findFirst as any).mockResolvedValue({ id: 5, number: 3 });
       (prisma.season.create as any).mockResolvedValue({
-        id: 6, number: 4, name: 'Test Season', active: true,
-        startDate: new Date(), endDate: new Date(),
+        id: 6,
+        number: 4,
+        name: 'Test Season',
+        active: true,
+        startDate: new Date(),
+        endDate: new Date(),
       });
 
       const result = await adminCreateSeason('Test Season', 45);
@@ -236,7 +264,9 @@ describe('season.service', () => {
         data: expect.objectContaining({ number: 4, name: 'Test Season', active: true }),
       });
       const call = (prisma.season.create as any).mock.calls[0][0];
-      const diffDays = Math.round((call.data.endDate.getTime() - call.data.startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const diffDays = Math.round(
+        (call.data.endDate.getTime() - call.data.startDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
       expect(diffDays).toBe(45);
       expect(result.number).toBe(4);
     });
@@ -244,8 +274,12 @@ describe('season.service', () => {
     it('should start at number 1 when no seasons exist', async () => {
       (prisma.season.findFirst as any).mockResolvedValue(null);
       (prisma.season.create as any).mockResolvedValue({
-        id: 1, number: 1, name: null, active: true,
-        startDate: new Date(), endDate: new Date(),
+        id: 1,
+        number: 1,
+        name: null,
+        active: true,
+        startDate: new Date(),
+        endDate: new Date(),
       });
 
       await adminCreateSeason(null, 30);

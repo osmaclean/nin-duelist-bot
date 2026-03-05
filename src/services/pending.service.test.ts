@@ -56,9 +56,7 @@ describe('pending.service', () => {
 
   it('should assign urgency 2 for PROPOSED duels awaiting opponent acceptance', async () => {
     (prisma.player.findUnique as any).mockResolvedValue({ id: 2 });
-    (prisma.duel.findMany as any).mockResolvedValue([
-      makeDuel({ opponentId: 2, opponentAccepted: false }),
-    ]);
+    (prisma.duel.findMany as any).mockResolvedValue([makeDuel({ opponentId: 2, opponentAccepted: false })]);
 
     const result = await getPendingDuels('u2', 1);
 
@@ -68,9 +66,7 @@ describe('pending.service', () => {
 
   it('should assign urgency 1 for AWAITING_VALIDATION when user is witness', async () => {
     (prisma.player.findUnique as any).mockResolvedValue({ id: 3 });
-    (prisma.duel.findMany as any).mockResolvedValue([
-      makeDuel({ status: 'AWAITING_VALIDATION', witnessId: 3 }),
-    ]);
+    (prisma.duel.findMany as any).mockResolvedValue([makeDuel({ status: 'AWAITING_VALIDATION', witnessId: 3 })]);
 
     const result = await getPendingDuels('u3', 1);
 
@@ -96,9 +92,7 @@ describe('pending.service', () => {
 
   it('should assign urgency 3 for ACCEPTED duels', async () => {
     (prisma.player.findUnique as any).mockResolvedValue({ id: 1 });
-    (prisma.duel.findMany as any).mockResolvedValue([
-      makeDuel({ status: 'ACCEPTED' }),
-    ]);
+    (prisma.duel.findMany as any).mockResolvedValue([makeDuel({ status: 'ACCEPTED' })]);
 
     const result = await getPendingDuels('u1', 1);
 

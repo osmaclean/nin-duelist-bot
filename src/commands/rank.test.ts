@@ -108,13 +108,7 @@ describe('commands/rank', () => {
 
     await handleRankCommand(interaction);
 
-    expect(buildRankEmbed).toHaveBeenCalledWith(
-      5,
-      expect.any(Array),
-      2,
-      3,
-      21,
-    );
+    expect(buildRankEmbed).toHaveBeenCalledWith(5, expect.any(Array), 2, 3, 21);
     expect(buildPaginationRow).toHaveBeenCalledWith(2, 3);
     expect(interaction.editReply).toHaveBeenCalledWith({ embeds: [embed], components: [row] });
   });

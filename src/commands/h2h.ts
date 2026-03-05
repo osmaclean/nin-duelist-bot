@@ -5,9 +5,7 @@ import { getHeadToHead } from '../services/h2h.service';
 function formatDuelLine(duel: any, discordIdA: string): string {
   const aWon = duel.winner?.discordId === discordIdA;
   const result = aWon ? 'V' : 'D';
-  const score = aWon
-    ? `${duel.scoreWinner}-${duel.scoreLoser}`
-    : `${duel.scoreLoser}-${duel.scoreWinner}`;
+  const score = aWon ? `${duel.scoreWinner}-${duel.scoreLoser}` : `${duel.scoreLoser}-${duel.scoreWinner}`;
   const date = duel.updatedAt.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   return `\`${date}\` **${result}** ${score}`;
 }

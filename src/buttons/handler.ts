@@ -24,9 +24,7 @@ export async function validateDuelButton(
   if (isNaN(duelId)) return { error: 'Interação inválida.' };
 
   const duel = await getDuelById(duelId);
-  const expectedStatuses = Array.isArray(config.expectedStatus)
-    ? config.expectedStatus
-    : [config.expectedStatus];
+  const expectedStatuses = Array.isArray(config.expectedStatus) ? config.expectedStatus : [config.expectedStatus];
 
   if (!duel || !expectedStatuses.includes(duel.status)) return { error: config.errorMessage };
 
@@ -45,9 +43,7 @@ function disableAllButtons(interaction: ButtonInteraction): void {
   const disabledRows = components.map((row) => {
     const newRow = new ActionRowBuilder<ButtonBuilder>();
     for (const component of row.components) {
-      newRow.addComponents(
-        ButtonBuilder.from(component as any).setDisabled(true),
-      );
+      newRow.addComponents(ButtonBuilder.from(component as any).setDisabled(true));
     }
     return newRow;
   });

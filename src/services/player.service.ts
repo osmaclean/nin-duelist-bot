@@ -37,10 +37,7 @@ export async function reverseResult(winnerId: number, loserId: number, seasonId:
 }
 
 export async function applyResult(winnerId: number, loserId: number, seasonId: number, tx: TxClient = prisma) {
-  await Promise.all([
-    ensurePlayerSeason(winnerId, seasonId, tx),
-    ensurePlayerSeason(loserId, seasonId, tx),
-  ]);
+  await Promise.all([ensurePlayerSeason(winnerId, seasonId, tx), ensurePlayerSeason(loserId, seasonId, tx)]);
 
   await Promise.all([
     // Update winner: points, wins, streak, and peakStreak in one query

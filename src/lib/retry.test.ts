@@ -14,10 +14,7 @@ describe('lib/retry', () => {
   });
 
   it('should retry on failure and succeed', async () => {
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('fail'))
-      .mockResolvedValue('recovered');
+    const fn = vi.fn().mockRejectedValueOnce(new Error('fail')).mockResolvedValue('recovered');
 
     const result = await withRetry(fn, 'test', 2, 1);
     expect(result).toBe('recovered');
@@ -32,17 +29,11 @@ describe('lib/retry', () => {
   });
 
   it('should log warnings on each retry', async () => {
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('fail'))
-      .mockResolvedValue('ok');
+    const fn = vi.fn().mockRejectedValueOnce(new Error('fail')).mockResolvedValue('ok');
 
     await withRetry(fn, 'my-op', 2, 1);
 
     const { logger } = await import('./logger');
-    expect(logger.warn).toHaveBeenCalledWith(
-      'Retry 1/2 para my-op',
-      expect.objectContaining({ error: 'Error: fail' }),
-    );
+    expect(logger.warn).toHaveBeenCalledWith('Retry 1/2 para my-op', expect.objectContaining({ error: 'Error: fail' }));
   });
 });

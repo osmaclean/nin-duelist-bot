@@ -100,13 +100,21 @@ describe('deploy-commands', () => {
     expect(REST).toHaveBeenCalledTimes(1);
     expect(setToken).toHaveBeenCalledWith('token');
     expect(Routes.applicationGuildCommands).toHaveBeenCalledWith('client-id', 'guild-id');
-    expect(put).toHaveBeenCalledWith(
-      'guild-route',
-      expect.objectContaining({ body: expect.any(Array) }),
-    );
+    expect(put).toHaveBeenCalledWith('guild-route', expect.objectContaining({ body: expect.any(Array) }));
     const body = put.mock.calls[0][1].body;
     expect(body).toHaveLength(10);
-    expect(body.map((c: any) => c.name)).toEqual(['duel', 'rank', 'mvp', 'pending', 'history', 'profile', 'h2h', 'activity', 'records', 'admin']);
+    expect(body.map((c: any) => c.name)).toEqual([
+      'duel',
+      'rank',
+      'mvp',
+      'pending',
+      'history',
+      'profile',
+      'h2h',
+      'activity',
+      'records',
+      'admin',
+    ]);
     expect(mockLogger.info).toHaveBeenCalledWith('Registrando slash commands');
   });
 
@@ -136,10 +144,7 @@ describe('deploy-commands', () => {
     await Promise.resolve();
 
     expect(Routes.applicationCommands).toHaveBeenCalledWith('client-id');
-    expect(put).toHaveBeenCalledWith(
-      'global-route',
-      expect.objectContaining({ body: expect.any(Array) }),
-    );
+    expect(put).toHaveBeenCalledWith('global-route', expect.objectContaining({ body: expect.any(Array) }));
   });
 
   it('should catch and log errors from main', async () => {

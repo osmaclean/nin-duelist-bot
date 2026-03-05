@@ -1,4 +1,4 @@
-import { DuelStatus, Prisma } from '@prisma/client';
+import { DuelStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { SEASON_DURATION_DAYS } from '../config';
 import { logger } from '../lib/logger';

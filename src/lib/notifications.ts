@@ -43,11 +43,15 @@ export async function notifyDuelCreated(client: Client, duel: DuelWithPlayers): 
 
   await Promise.all([
     sendDmWithFallback(client, duel.opponent.discordId, message, duel.id, duel.channelId),
-    sendDmWithFallback(client, duel.witness.discordId,
+    sendDmWithFallback(
+      client,
+      duel.witness.discordId,
       `**Duelo #${duel.id}** — Você foi escolhido como testemunha!\n` +
-      `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}> (${duel.format})\n` +
-      `Você validará o resultado quando o duelo terminar.`,
-      duel.id, duel.channelId),
+        `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}> (${duel.format})\n` +
+        `Você validará o resultado quando o duelo terminar.`,
+      duel.id,
+      duel.channelId,
+    ),
   ]);
 
   logger.info('Notificação de duelo criado enviada', { duelId: duel.id });
@@ -87,9 +91,8 @@ export async function notifyWitnessValidation(client: Client, duel: DuelWithPlay
  * Notifica ambos duelistas que o resultado foi confirmado.
  */
 export async function notifyDuelConfirmed(client: Client, duel: DuelWithPlayers): Promise<void> {
-  const winnerTag = duel.winnerId === duel.challengerId
-    ? `<@${duel.challenger.discordId}>`
-    : `<@${duel.opponent.discordId}>`;
+  const winnerTag =
+    duel.winnerId === duel.challengerId ? `<@${duel.challenger.discordId}>` : `<@${duel.opponent.discordId}>`;
 
   const message =
     `**Duelo #${duel.id}** — Resultado confirmado!\n` +

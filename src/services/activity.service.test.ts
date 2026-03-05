@@ -24,9 +24,7 @@ describe('activity.service', () => {
   });
 
   it('should filter out players with 0 duels', async () => {
-    (prisma.playerSeason.findMany as any).mockResolvedValue([
-      { player: { discordId: 'u1' }, wins: 0, losses: 0 },
-    ]);
+    (prisma.playerSeason.findMany as any).mockResolvedValue([{ player: { discordId: 'u1' }, wins: 0, losses: 0 }]);
 
     const result = await getMostActive(1);
 

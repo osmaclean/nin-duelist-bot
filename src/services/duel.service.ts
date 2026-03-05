@@ -76,12 +76,7 @@ export async function startDuel(duelId: number) {
   return transitionDuel(duelId, 'ACCEPTED', { status: 'IN_PROGRESS' });
 }
 
-export async function submitResult(
-  duelId: number,
-  winnerId: number,
-  scoreWinner: number,
-  scoreLoser: number,
-) {
+export async function submitResult(duelId: number, winnerId: number, scoreWinner: number, scoreLoser: number) {
   return transitionDuel(duelId, 'IN_PROGRESS', {
     status: 'AWAITING_VALIDATION',
     winnerId,
@@ -100,8 +95,7 @@ export async function confirmAndApplyResult(duelId: number) {
     if (!confirmed) return null;
 
     if (confirmed.winnerId) {
-      const loserId =
-        confirmed.winnerId === confirmed.challengerId ? confirmed.opponentId : confirmed.challengerId;
+      const loserId = confirmed.winnerId === confirmed.challengerId ? confirmed.opponentId : confirmed.challengerId;
       await applyResult(confirmed.winnerId, loserId, confirmed.seasonId, tx);
     }
 
@@ -138,11 +132,7 @@ export async function reopenDuel(duelId: number) {
 
 /** Admin: force a duel to EXPIRED regardless of current non-terminal status */
 export async function forceExpireDuel(duelId: number) {
-  return transitionDuel(
-    duelId,
-    ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'AWAITING_VALIDATION'],
-    { status: 'EXPIRED' },
-  );
+  return transitionDuel(duelId, ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'AWAITING_VALIDATION'], { status: 'EXPIRED' });
 }
 
 /** Admin: fix result — set new winner/score in a CONFIRMED duel (within a transaction) */

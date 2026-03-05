@@ -247,9 +247,6 @@ describe('jobs/expire-duels', () => {
     );
 
     const { notifyDuelExpiringSoon } = await import('../lib/notifications');
-    expect(notifyDuelExpiringSoon).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ id: 5 }),
-    );
+    expect(notifyDuelExpiringSoon).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ id: 5 }));
   });
 });

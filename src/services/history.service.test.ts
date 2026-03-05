@@ -84,7 +84,11 @@ describe('history.service', () => {
   it('should query duels ordered by updatedAt desc with limit 10', async () => {
     (prisma.player.findUnique as any).mockResolvedValue({ id: 3 });
     (prisma.playerSeason.findUnique as any).mockResolvedValue({
-      points: 1, wins: 1, losses: 0, streak: 1, peakStreak: 1,
+      points: 1,
+      wins: 1,
+      losses: 0,
+      streak: 1,
+      peakStreak: 1,
     });
     (prisma.duel.findMany as any).mockResolvedValue([]);
 

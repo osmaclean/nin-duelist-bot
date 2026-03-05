@@ -32,9 +32,7 @@ function makeDuel(overrides: Record<string, unknown> = {}) {
 }
 
 function makeClient(dmSuccess = true) {
-  const send = dmSuccess
-    ? vi.fn().mockResolvedValue(undefined)
-    : vi.fn().mockRejectedValue(new Error('DM fail'));
+  const send = dmSuccess ? vi.fn().mockResolvedValue(undefined) : vi.fn().mockRejectedValue(new Error('DM fail'));
   return {
     users: { fetch: vi.fn().mockResolvedValue({ send }) },
     channels: { fetch: vi.fn().mockResolvedValue({ send: vi.fn().mockResolvedValue(undefined) }) },

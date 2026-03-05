@@ -20,11 +20,7 @@ export async function getPendingDuels(discordId: string, seasonId: number): Prom
     where: {
       seasonId,
       status: { in: ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'AWAITING_VALIDATION'] },
-      OR: [
-        { challengerId: player.id },
-        { opponentId: player.id },
-        { witnessId: player.id },
-      ],
+      OR: [{ challengerId: player.id }, { opponentId: player.id }, { witnessId: player.id }],
     },
     include: DUEL_INCLUDE,
     orderBy: { createdAt: 'asc' },
@@ -42,10 +38,11 @@ export async function getPendingDuels(discordId: string, seasonId: number): Prom
         urgency = 0; // most urgent: about to expire
       } else if (duel.status === 'AWAITING_VALIDATION' && duel.witnessId === player.id) {
         urgency = 1;
-      } else if (duel.status === 'PROPOSED' && (
-        (duel.opponentId === player.id && !duel.opponentAccepted) ||
-        (duel.witnessId === player.id && !duel.witnessAccepted)
-      )) {
+      } else if (
+        duel.status === 'PROPOSED' &&
+        ((duel.opponentId === player.id && !duel.opponentAccepted) ||
+          (duel.witnessId === player.id && !duel.witnessAccepted))
+      ) {
         urgency = 2;
       } else if (duel.status === 'ACCEPTED') {
         urgency = 3;

@@ -28,9 +28,7 @@ describe('h2h.service', () => {
   });
 
   it('should return empty when player B not found', async () => {
-    (prisma.player.findUnique as any)
-      .mockResolvedValueOnce({ id: 1 })
-      .mockResolvedValueOnce(null);
+    (prisma.player.findUnique as any).mockResolvedValueOnce({ id: 1 }).mockResolvedValueOnce(null);
 
     const result = await getHeadToHead('a', 'b', 1);
 
@@ -38,9 +36,7 @@ describe('h2h.service', () => {
   });
 
   it('should return empty when no confirmed duels between players', async () => {
-    (prisma.player.findUnique as any)
-      .mockResolvedValueOnce({ id: 1 })
-      .mockResolvedValueOnce({ id: 2 });
+    (prisma.player.findUnique as any).mockResolvedValueOnce({ id: 1 }).mockResolvedValueOnce({ id: 2 });
     (prisma.duel.findMany as any).mockResolvedValue([]);
 
     const result = await getHeadToHead('a', 'b', 1);
@@ -51,14 +47,8 @@ describe('h2h.service', () => {
   });
 
   it('should calculate wins and winRate correctly', async () => {
-    (prisma.player.findUnique as any)
-      .mockResolvedValueOnce({ id: 10 })
-      .mockResolvedValueOnce({ id: 20 });
-    (prisma.duel.findMany as any).mockResolvedValue([
-      { winnerId: 10 },
-      { winnerId: 20 },
-      { winnerId: 10 },
-    ]);
+    (prisma.player.findUnique as any).mockResolvedValueOnce({ id: 10 }).mockResolvedValueOnce({ id: 20 });
+    (prisma.duel.findMany as any).mockResolvedValue([{ winnerId: 10 }, { winnerId: 20 }, { winnerId: 10 }]);
 
     const result = await getHeadToHead('a', 'b', 5);
 
@@ -71,9 +61,7 @@ describe('h2h.service', () => {
   });
 
   it('should query with correct filters and ordering', async () => {
-    (prisma.player.findUnique as any)
-      .mockResolvedValueOnce({ id: 1 })
-      .mockResolvedValueOnce({ id: 2 });
+    (prisma.player.findUnique as any).mockResolvedValueOnce({ id: 1 }).mockResolvedValueOnce({ id: 2 });
     (prisma.duel.findMany as any).mockResolvedValue([]);
 
     await getHeadToHead('a', 'b', 3);
