@@ -39,6 +39,12 @@ export const DUEL_COOLDOWN_MS = 30 * 1000; // 30 segundos
 /** Cooldown para botões de ação por usuário (ms) */
 export const BUTTON_COOLDOWN_MS = 5 * 1000; // 5 segundos
 
+/** Cooldown de notificação por usuário por tipo de evento (ms) */
+export const NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutos
+
+/** Tempo antes do fim da season para enviar aviso (ms) */
+export const SEASON_ENDING_WARNING_MS = 24 * 60 * 60 * 1000; // 24 horas
+
 /** Pontos por vitória/derrota (ranked) */
 export const POINTS_WIN = 1;
 export const POINTS_LOSS = -1;

@@ -23,12 +23,13 @@ enum DuelFormat {
 }
 
 model Season {
-  id        Int      @id @default(autoincrement())
-  number    Int      @unique
-  name      String?
-  startDate DateTime @default(now())
-  endDate   DateTime
-  active    Boolean  @default(true)
+  id                      Int      @id @default(autoincrement())
+  number                  Int      @unique
+  name                    String?
+  startDate               DateTime @default(now())
+  endDate                 DateTime
+  active                  Boolean  @default(true)
+  endingNotificationSent  Boolean  @default(false)
 
   champion   Player?        @relation("SeasonChampion", fields: [championId], references: [id])
   championId Int?
@@ -41,6 +42,7 @@ model Player {
   id        Int      @id @default(autoincrement())
   discordId String   @unique
   username  String
+  dmEnabled Boolean  @default(true)
   createdAt DateTime @default(now())
 
   challengerDuels Duel[] @relation("Challenger")
