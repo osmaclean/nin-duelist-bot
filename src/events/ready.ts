@@ -13,7 +13,7 @@ export function registerReadyEvent(client: Client) {
     try {
       await ensureActiveSeason();
       startExpireDuelsJob(c);
-      startSeasonCheckJob();
+      startSeasonCheckJob(c);
 
       logger.info('Jobs registrados', { jobs: Object.keys(getJobHealth()) });
 

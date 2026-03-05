@@ -140,6 +140,13 @@ export async function adminEndSeason(seasonId: number) {
   logger.info('Season encerrada por admin', { seasonId, championId: topPlayer?.playerId ?? null });
 }
 
+export async function markSeasonEndingNotified(seasonId: number) {
+  await prisma.season.update({
+    where: { id: seasonId },
+    data: { endingNotificationSent: true },
+  });
+}
+
 export async function adminCreateSeason(name: string | null, durationDays: number) {
   const lastSeason = await prisma.season.findFirst({ orderBy: { number: 'desc' } });
   const nextNumber = lastSeason ? lastSeason.number + 1 : 1;

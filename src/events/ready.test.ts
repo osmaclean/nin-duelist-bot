@@ -58,7 +58,7 @@ describe('events/ready', () => {
     expect(logger.info).toHaveBeenCalledWith('Bot online', { tag: 'Nin#1234' });
     expect(ensureActiveSeason).toHaveBeenCalledTimes(1);
     expect(startExpireDuelsJob).toHaveBeenCalledWith(readyClient);
-    expect(startSeasonCheckJob).toHaveBeenCalledTimes(1);
+    expect(startSeasonCheckJob).toHaveBeenCalledWith(readyClient);
     expect(reconcileStaleEmbeds).toHaveBeenCalledWith(readyClient);
   });
 
