@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleAdminCommand } from './admin';
 import { getDuelById, cancelDuel, reopenDuel, forceExpireDuel, adminFixResult } from '../services/duel.service';
-import { reverseResult, applyResult } from '../services/player.service';
+import { reverseResult } from '../services/player.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { logAdminAction, getAdminLogs } from '../services/audit.service';
-import { getActiveSeason, getSeasonStatus, getSeasonPodium, adminEndSeason, adminCreateSeason } from '../services/season.service';
+import {
+  getActiveSeason,
+  getSeasonStatus,
+  getSeasonPodium,
+  adminEndSeason,
+  adminCreateSeason,
+} from '../services/season.service';
+import { searchDuelsByPlayer, searchDuelsByStatus } from '../services/search.service';
 
 vi.mock('../services/duel.service', () => ({
   getDuelById: vi.fn(),
@@ -40,13 +47,20 @@ vi.mock('../services/season.service', () => ({
   adminCreateSeason: vi.fn(),
 }));
 
+vi.mock('../services/search.service', () => ({
+  searchDuelsByPlayer: vi.fn().mockResolvedValue([]),
+  searchDuelsByStatus: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock('../lib/prisma', () => ({
   prisma: {
-    $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn({
-      $executeRaw: vi.fn(),
-      duel: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUnique: vi.fn() },
-      playerSeason: { upsert: vi.fn() },
-    })),
+    $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) =>
+      fn({
+        $executeRaw: vi.fn(),
+        duel: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUnique: vi.fn() },
+        playerSeason: { upsert: vi.fn() },
+      }),
+    ),
   },
 }));
 
@@ -286,11 +300,13 @@ describe('commands/admin', () => {
       await handleAdminCommand(i);
 
       expect(forceExpireDuel).toHaveBeenCalledWith(10);
-      expect(logAdminAction).toHaveBeenCalledWith(expect.objectContaining({
-        action: 'FORCE_EXPIRE',
-        previousStatus: 'AWAITING_VALIDATION',
-        newStatus: 'EXPIRED',
-      }));
+      expect(logAdminAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'FORCE_EXPIRE',
+          previousStatus: 'AWAITING_VALIDATION',
+          newStatus: 'EXPIRED',
+        }),
+      );
       expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('expirado forçadamente'));
     });
 
@@ -356,11 +372,13 @@ describe('commands/admin', () => {
       const i = interaction('fix-result', { _winnerUser: { id: 'u1', tag: 'User1#0' } });
       await handleAdminCommand(i);
 
-      expect(logAdminAction).toHaveBeenCalledWith(expect.objectContaining({
-        action: 'FIX_RESULT',
-        previousStatus: 'CONFIRMED',
-        newStatus: 'CONFIRMED',
-      }));
+      expect(logAdminAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'FIX_RESULT',
+          previousStatus: 'CONFIRMED',
+          newStatus: 'CONFIRMED',
+        }),
+      );
       expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('corrigido'));
     });
   });
@@ -422,9 +440,11 @@ describe('commands/admin', () => {
       const i = interaction('status', { _group: 'season' });
       await handleAdminCommand(i);
 
-      expect(i.editReply).toHaveBeenCalledWith(expect.objectContaining({
-        embeds: expect.any(Array),
-      }));
+      expect(i.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          embeds: expect.any(Array),
+        }),
+      );
     });
   });
 
@@ -517,6 +537,88 @@ describe('commands/admin', () => {
 
       expect(adminCreateSeason).toHaveBeenCalledWith(null, 30);
       expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('Season 5'));
+    });
+  });
+
+  // ─── /admin search player ──────────────────────────
+
+  describe('search player', () => {
+    it('should reply no duels when player has none', async () => {
+      (searchDuelsByPlayer as any).mockResolvedValue([]);
+      const i = interaction('player', { _group: 'search', _winnerUser: { id: 'u1' } });
+      await handleAdminCommand(i);
+      expect(searchDuelsByPlayer).toHaveBeenCalledWith('u1');
+      expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('Nenhum duelo encontrado'));
+    });
+
+    it('should display duel list for player', async () => {
+      (searchDuelsByPlayer as any).mockResolvedValue([
+        {
+          id: 5,
+          status: 'CONFIRMED',
+          createdAt: new Date('2026-02-20'),
+          scoreWinner: 2,
+          scoreLoser: 1,
+          challenger: { discordId: 'u1' },
+          opponent: { discordId: 'u2' },
+        },
+        {
+          id: 3,
+          status: 'CANCELLED',
+          createdAt: new Date('2026-02-18'),
+          scoreWinner: null,
+          scoreLoser: null,
+          challenger: { discordId: 'u1' },
+          opponent: { discordId: 'u3' },
+        },
+      ]);
+
+      const i = interaction('player', { _group: 'search', _winnerUser: { id: 'u1' } });
+      await handleAdminCommand(i);
+
+      expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('#5'));
+      expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('CONFIRMED'));
+      expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('(2-1)'));
+      expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('#3'));
+      expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('CANCELLED'));
+    });
+  });
+
+  // ─── /admin search status ─────────────────────────
+
+  describe('search status', () => {
+    it('should reject invalid status', async () => {
+      const i = interaction('status', { _group: 'search', _options: { status: 'INVALID' } });
+      await handleAdminCommand(i);
+      expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('Status inválido'));
+    });
+
+    it('should reply no duels when none match status', async () => {
+      (searchDuelsByStatus as any).mockResolvedValue([]);
+      const i = interaction('status', { _group: 'search', _options: { status: 'PROPOSED' } });
+      await handleAdminCommand(i);
+      expect(searchDuelsByStatus).toHaveBeenCalledWith('PROPOSED');
+      expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('Nenhum duelo com status'));
+    });
+
+    it('should display duels filtered by status', async () => {
+      (searchDuelsByStatus as any).mockResolvedValue([
+        {
+          id: 7,
+          status: 'IN_PROGRESS',
+          createdAt: new Date('2026-02-25'),
+          scoreWinner: null,
+          scoreLoser: null,
+          challenger: { discordId: 'u1' },
+          opponent: { discordId: 'u2' },
+        },
+      ]);
+
+      const i = interaction('status', { _group: 'search', _options: { status: 'IN_PROGRESS' } });
+      await handleAdminCommand(i);
+
+      expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('#7'));
+      expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('IN_PROGRESS'));
     });
   });
 });

@@ -93,12 +93,8 @@ const commands = [
       group
         .setName('season')
         .setDescription('Gestão de seasons')
-        .addSubcommand((sub) =>
-          sub.setName('status').setDescription('Ver informações da season ativa'),
-        )
-        .addSubcommand((sub) =>
-          sub.setName('end').setDescription('Encerrar a season ativa manualmente'),
-        )
+        .addSubcommand((sub) => sub.setName('status').setDescription('Ver informações da season ativa'))
+        .addSubcommand((sub) => sub.setName('end').setDescription('Encerrar a season ativa manualmente'))
         .addSubcommand((sub) =>
           sub
             .setName('create')
@@ -106,6 +102,37 @@ const commands = [
             .addStringOption((o) => o.setName('name').setDescription('Nome da season (opcional)'))
             .addIntegerOption((o) =>
               o.setName('duration').setDescription('Duração em dias (padrão: 30)').setMinValue(1).setMaxValue(365),
+            ),
+        ),
+    )
+    .addSubcommandGroup((group) =>
+      group
+        .setName('search')
+        .setDescription('Buscar duelos')
+        .addSubcommand((sub) =>
+          sub
+            .setName('player')
+            .setDescription('Listar duelos recentes de um jogador')
+            .addUserOption((o) => o.setName('player').setDescription('Jogador para buscar').setRequired(true)),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName('status')
+            .setDescription('Listar duelos por status')
+            .addStringOption((o) =>
+              o
+                .setName('status')
+                .setDescription('Status do duelo')
+                .setRequired(true)
+                .addChoices(
+                  { name: 'PROPOSED', value: 'PROPOSED' },
+                  { name: 'ACCEPTED', value: 'ACCEPTED' },
+                  { name: 'IN_PROGRESS', value: 'IN_PROGRESS' },
+                  { name: 'AWAITING_VALIDATION', value: 'AWAITING_VALIDATION' },
+                  { name: 'CONFIRMED', value: 'CONFIRMED' },
+                  { name: 'CANCELLED', value: 'CANCELLED' },
+                  { name: 'EXPIRED', value: 'EXPIRED' },
+                ),
             ),
         ),
     )

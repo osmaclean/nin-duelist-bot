@@ -1,7 +1,14 @@
 import { ChatInputCommandInteraction, EmbedBuilder, Colors } from 'discord.js';
 import { getDuelById, cancelDuel, reopenDuel, forceExpireDuel, adminFixResult } from '../services/duel.service';
 import { reverseResult, applyResult } from '../services/player.service';
-import { getActiveSeason, getSeasonStatus, getSeasonPodium, adminEndSeason, adminCreateSeason } from '../services/season.service';
+import {
+  getActiveSeason,
+  getSeasonStatus,
+  getSeasonPodium,
+  adminEndSeason,
+  adminCreateSeason,
+} from '../services/season.service';
+import { searchDuelsByPlayer, searchDuelsByStatus } from '../services/search.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { ADMIN_ROLE_IDS, SEASON_DURATION_DAYS } from '../config';
 import { logger } from '../lib/logger';
@@ -45,6 +52,16 @@ export async function handleAdminCommand(interaction: ChatInputCommandInteractio
         return handleSeasonEnd(interaction);
       case 'create':
         return handleSeasonCreate(interaction);
+    }
+    return;
+  }
+
+  if (subcommandGroup === 'search') {
+    switch (subcommand) {
+      case 'player':
+        return handleSearchPlayer(interaction);
+      case 'status':
+        return handleSearchStatus(interaction);
     }
     return;
   }
@@ -147,7 +164,9 @@ async function handleAdminReopen(interaction: ChatInputCommandInteraction) {
 
   const nonTerminalStatuses = ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'AWAITING_VALIDATION'];
   if (nonTerminalStatuses.includes(duel.status)) {
-    await interaction.editReply(`Duelo #${duelId} não está em estado terminal (${duel.status}). Não é possível reabrir.`);
+    await interaction.editReply(
+      `Duelo #${duelId} não está em estado terminal (${duel.status}). Não é possível reabrir.`,
+    );
     return;
   }
 
@@ -421,9 +440,7 @@ async function handleSeasonEnd(interaction: ChatInputCommandInteraction) {
     .setTitle(`Season ${season.number}${seasonName} — Encerrada`)
     .setColor(Colors.Gold)
     .setDescription(
-      podiumLines.length
-        ? `**Pódio**\n\n${podiumLines.join('\n')}`
-        : 'Nenhum jogador participou desta season.',
+      podiumLines.length ? `**Pódio**\n\n${podiumLines.join('\n')}` : 'Nenhum jogador participou desta season.',
     );
 
   // Send podium in the channel (public, not ephemeral)
@@ -478,4 +495,65 @@ async function handleSeasonCreate(interaction: ChatInputCommandInteraction) {
   await interaction.editReply(
     `Season ${season.number}${seasonName} criada com sucesso.\n**Início:** ${season.startDate.toISOString().slice(0, 10)}\n**Término:** ${season.endDate.toISOString().slice(0, 10)}`,
   );
+}
+
+// ─── /admin search player ──────────────────────────────────────
+
+async function handleSearchPlayer(interaction: ChatInputCommandInteraction) {
+  const user = interaction.options.getUser('player', true);
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const duels = await searchDuelsByPlayer(user.id);
+
+  if (duels.length === 0) {
+    await interaction.editReply(`Nenhum duelo encontrado para <@${user.id}>.`);
+    return;
+  }
+
+  const lines = duels.map((d) => {
+    const date = d.createdAt.toISOString().slice(0, 10);
+    const score = d.scoreWinner !== null ? ` (${d.scoreWinner}-${d.scoreLoser})` : '';
+    return `\`#${d.id}\` ${d.status} — <@${d.challenger.discordId}> vs <@${d.opponent.discordId}>${score} — ${date}`;
+  });
+
+  await interaction.editReply(`**Duelos de <@${user.id}>** (últimos ${duels.length})\n\n${lines.join('\n')}`);
+}
+
+// ─── /admin search status ──────────────────────────────────────
+
+const VALID_STATUSES = [
+  'PROPOSED',
+  'ACCEPTED',
+  'IN_PROGRESS',
+  'AWAITING_VALIDATION',
+  'CONFIRMED',
+  'CANCELLED',
+  'EXPIRED',
+];
+
+async function handleSearchStatus(interaction: ChatInputCommandInteraction) {
+  const status = interaction.options.getString('status', true);
+
+  await interaction.deferReply({ ephemeral: true });
+
+  if (!VALID_STATUSES.includes(status)) {
+    await interaction.editReply(`Status inválido: \`${status}\`. Válidos: ${VALID_STATUSES.join(', ')}`);
+    return;
+  }
+
+  const duels = await searchDuelsByStatus(status as any);
+
+  if (duels.length === 0) {
+    await interaction.editReply(`Nenhum duelo com status \`${status}\`.`);
+    return;
+  }
+
+  const lines = duels.map((d) => {
+    const date = d.createdAt.toISOString().slice(0, 10);
+    const score = d.scoreWinner !== null ? ` (${d.scoreWinner}-${d.scoreLoser})` : '';
+    return `\`#${d.id}\` <@${d.challenger.discordId}> vs <@${d.opponent.discordId}>${score} — ${date}`;
+  });
+
+  await interaction.editReply(`**Duelos com status \`${status}\`** (${duels.length})\n\n${lines.join('\n')}`);
 }
