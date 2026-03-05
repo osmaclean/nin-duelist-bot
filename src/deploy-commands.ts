@@ -51,6 +51,18 @@ const commands = [
   new SlashCommandBuilder().setName('records').setDescription('Recordes da season atual').toJSON(),
 
   new SlashCommandBuilder()
+    .setName('settings')
+    .setDescription('Configurar preferências pessoais')
+    .addStringOption((o) =>
+      o
+        .setName('notifications')
+        .setDescription('Ativar ou desativar notificações por DM')
+        .setRequired(true)
+        .addChoices({ name: 'Ativar DMs', value: 'on' }, { name: 'Desativar DMs', value: 'off' }),
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
     .setName('admin')
     .setDescription('Comandos administrativos')
     .addSubcommand((sub) =>
