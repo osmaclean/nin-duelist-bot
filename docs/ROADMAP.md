@@ -212,11 +212,12 @@ Objetivo: ferramentas para moderação sem acesso direto ao banco.
 
 Objetivo: garantir que nenhum push quebre produção. Testes e lint rodando antes do deploy.
 
-#### 4.5.1 Pipeline de CI (GitHub Actions) ✅
+#### 4.5.1 Pipeline de CI (GitHub Actions)
 - [x] Workflow `ci.yml`: rodar `npm test` em todo push/PR para `main`
 - [x] Rodar `tsc --noEmit` para checar tipos sem compilar
 - [x] Cache de `node_modules` no CI para velocidade
 - [ ] Badge de status no README
+- [ ] Definir threshold mínimo de cobertura de testes no CI (flag `--coverage` + threshold)
 
 #### 4.5.2 Lint e formatação ✅
 - [x] ESLint com `typescript-eslint` (flat config, `eslint.config.mjs`)
@@ -266,6 +267,36 @@ Objetivo: notificações mais inteligentes, menos ruído, admin visível.
 
 ---
 
+### Fase 5.5 — Correções e polish
+
+Objetivo: corrigir bugs funcionais e operacionais identificados na análise complementar.
+
+#### 5.5.1 Botões desabilitados antes de validar permissão
+- [ ] Mover `disableAllButtons(interaction)` para após `validateDuelButton` retornar sucesso
+- [ ] Garantir que usuário sem permissão recebe resposta efêmera sem afetar embed para outros
+- [ ] Testes atualizados
+
+#### 5.5.2 Limpar lógica obsoleta de `witnessAccepted`
+- [ ] Remover `witnessAccepted` da lógica de urgência em `pending.service.ts`
+- [ ] Planejar remoção do campo `witnessAccepted` do schema (migration incremental `ALTER TABLE DROP COLUMN IF EXISTS`)
+- [ ] Atualizar testes de `/pending`
+
+#### 5.5.3 Medalhas no ranking e MVP
+- [ ] Corrigir arrays de medalhas em `embeds.ts` para `['🥇', '🥈', '🥉']`
+- [ ] Verificar e atualizar testes de embeds
+
+#### 5.5.4 Health check não mascarar falha de job
+- [ ] Mover `markJobSuccess('expire-duels')` para dentro do `try` (após sucesso real), remover do `finally`
+- [ ] Aplicar mesmo padrão no `season-check` se aplicável
+- [ ] Testes atualizados
+
+#### 5.5.5 Flag de season ending após envio (não antes)
+- [ ] Inverter ordem: enviar notificação primeiro, marcar `endingNotificationSent` somente após sucesso
+- [ ] Update condicional/idempotente (`WHERE endingNotificationSent = false`) para evitar corrida
+- [ ] Testes atualizados
+
+---
+
 ### Fase 6 — Filtros avançados
 
 Objetivo: mais controle na consulta de dados.
@@ -273,6 +304,7 @@ Objetivo: mais controle na consulta de dados.
 - [ ] `/history` com filtros `vs:@user`, `from:date`, `to:date`
 - [ ] `/history` com paginação por botões para mais de 10 duelos
 - [ ] `/pending` com filtro `season: current|all` e `limit`
+- [ ] `/season` (público) — status da season atual: número, dias restantes, top 3 parcial
 
 ---
 
@@ -308,7 +340,7 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 - [ ] Centralizar validação de formato de duelo (`MD1`/`MD3`) em helper reutilizável
 
 #### 8.2 Tipagem e contratos
-- [ ] Reduzir `as any` no código fonte (13 warnings restantes do ESLint)
+- [ ] Reduzir `as any` no código fonte (12 warnings restantes do ESLint)
 - [x] ~~Corrigir `admin.ts:545` — trocar `status as any` por `status as DuelStatus`~~ (resolvido na Fase 5)
 - [ ] Tipar retornos de services que retornam `any` implícito
 - [ ] Criar tipos discriminados para estados do duelo (DuelProposed, DuelAccepted, etc.) para type safety na máquina de estados
@@ -317,6 +349,17 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 - [ ] Avaliar persistir cooldowns em memória vs aceitar perda no restart (decisão documentada, manter se aceitável)
 - [ ] Timeout de transações Prisma (`$transaction` com `timeout` explícito) para evitar lock infinito
 - [ ] Tratamento de `PrismaClientKnownRequestError` específico (unique constraint, not found) vs erro genérico
+
+#### 8.4 Integridade no banco de dados
+- [ ] `CHECK` constraint para coerência de placar por formato (MD1: 1-0 apenas; MD3: 2-0 ou 2-1 apenas)
+- [ ] `CHECK` constraint para garantir `winnerId IN (challengerId, opponentId)` quando resultado existir
+- [ ] Índice único parcial em `Season(active)` quando `active = true` — prevenir múltiplas seasons ativas
+- [ ] `/admin repair season <id>` — recalcular `PlayerSeason` a partir dos duelos confirmados (recuperação de dados)
+
+#### 8.5 Manutenção de migrations
+- [ ] Tornar `migration_phase5.sql` idempotente (`ADD COLUMN IF NOT EXISTS`)
+- [ ] Revisar divergência entre `migration.sql` base e schema atual (`witnessId` nullable vs obrigatório)
+- [ ] Documentar fluxo correto de aplicação de migrations incrementais para ambiente novo
 
 ---
 
@@ -335,6 +378,11 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 | 9 | ~~Testemunha precisa aceitar para duelo iniciar~~ | ~~Fricção desnecessária~~ | Resolvido (Fase 3.5.1) |
 | 10 | ~~Sem gestão de season pelo Discord~~ | ~~Admin precisa acessar SQL Editor~~ | Resolvido (Fase 4.3) |
 | 11 | ~~`notifyDuelExpiringSoon` só notificava oponente, testemunha ficava sem aviso~~ | ~~Testemunha sem ciência da expiração~~ | Resolvido (pré-Fase 5) |
+| 12 | `disableAllButtons` é chamado antes de validar permissão/status no handler de botões | Usuário sem permissão "apaga" botões do embed para todos os participantes | Pendente (Fase 5.5.1) |
+| 13 | `/pending` ainda usa `witnessAccepted` na lógica de urgência | Pendências incorretas após remoção do aceite de testemunha (Fase 3.5.1) | Pendente (Fase 5.5.2) |
+| 14 | Medalhas vazias no top 3 do ranking/MVP — arrays com `''` ao invés de emojis | Regressão visual: posições 1-3 sem medalha | Pendente (Fase 5.5.3) |
+| 15 | `markJobSuccess('expire-duels')` no bloco `finally` — marca sucesso mesmo após erro | Health check mascara falhas de job | Pendente (Fase 5.5.4) |
+| 16 | `markSeasonEndingNotified` é chamado antes de `notifySeasonEnding` — se envio falha, nunca retenta | Jogadores podem não receber aviso de season encerrando | Pendente (Fase 5.5.5) |
 
 ---
 
@@ -362,3 +410,6 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 - **Anti-spam notificações:** Cooldown de 5 min por usuário por tipo de evento. In-memory, aceita perda no restart.
 - **Admin notifica:** Todas as ações admin (cancel, reopen, force-expire, fix-result) notificam os duelistas com reason.
 - **Season ending:** Aviso 24h antes do encerramento. Flag `endingNotificationSent` na Season para dedup persistente.
+- **Outbox de notificações:** Descartado. Over-engineering para o volume atual. Fire-and-forget é suficiente.
+- **Hardening multi-instância:** Descartado. Bot roda em instância única no Railway. Sem justificativa para idempotência distribuída.
+- **`/admin replay-notification`:** Descartado. Notificações são fire-and-forget; reenvio manual é edge case demais.
