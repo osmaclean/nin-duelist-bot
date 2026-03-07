@@ -224,7 +224,6 @@ export async function repairSeasonStats(
         },
       }),
     ),
-    { timeout: 15_000 },
   );
 
   logger.info('Season stats reparados', { seasonId, playersUpdated: stats.size });
