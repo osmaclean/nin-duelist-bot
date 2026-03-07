@@ -23,14 +23,22 @@ const commands = [
     .addIntegerOption((o) => o.setName('page').setDescription('Página').setMinValue(1))
     .toJSON(),
 
-  new SlashCommandBuilder().setName('mvp').setDescription('Top 5 jogadores da season').toJSON(),
+  new SlashCommandBuilder().setName('mvp').setDescription('Top 3 jogadores da season').toJSON(),
 
-  new SlashCommandBuilder().setName('pending').setDescription('Ver duelos pendentes de ação sua').toJSON(),
+  new SlashCommandBuilder()
+    .setName('pending')
+    .setDescription('Ver duelos pendentes de acao sua')
+    .addIntegerOption((o) => o.setName('limit').setDescription('Maximo de duelos a exibir').setMinValue(1).setMaxValue(50))
+    .toJSON(),
 
   new SlashCommandBuilder()
     .setName('history')
-    .setDescription('Ver histórico de duelos na season atual')
-    .addUserOption((o) => o.setName('player').setDescription('Jogador (padrão: você)'))
+    .setDescription('Ver historico de duelos na season atual')
+    .addUserOption((o) => o.setName('player').setDescription('Jogador (padrao: voce)'))
+    .addUserOption((o) => o.setName('vs').setDescription('Filtrar duelos contra este jogador'))
+    .addStringOption((o) => o.setName('from').setDescription('Data inicial (YYYY-MM-DD)'))
+    .addStringOption((o) => o.setName('to').setDescription('Data final (YYYY-MM-DD)'))
+    .addIntegerOption((o) => o.setName('page').setDescription('Pagina').setMinValue(1))
     .toJSON(),
 
   new SlashCommandBuilder()
@@ -49,6 +57,8 @@ const commands = [
   new SlashCommandBuilder().setName('activity').setDescription('Top 10 jogadores mais ativos da season').toJSON(),
 
   new SlashCommandBuilder().setName('records').setDescription('Recordes da season atual').toJSON(),
+
+  new SlashCommandBuilder().setName('season').setDescription('Status da season atual').toJSON(),
 
   new SlashCommandBuilder()
     .setName('settings')

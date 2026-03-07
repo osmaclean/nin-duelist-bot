@@ -30,6 +30,9 @@ export const SEASON_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
 /** Itens por página no ranking */
 export const RANK_PAGE_SIZE = 20;
 
+/** Itens por página no histórico */
+export const HISTORY_PAGE_SIZE = 10;
+
 /** Tempo antes da expiração para enviar aviso (ms) */
 export const EXPIRY_WARNING_MS = 10 * 60 * 1000; // 10 minutos antes de expirar
 
@@ -44,6 +47,12 @@ export const NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutos
 
 /** Tempo antes do fim da season para enviar aviso (ms) */
 export const SEASON_ENDING_WARNING_MS = 24 * 60 * 60 * 1000; // 24 horas
+
+/** Porta do servidor HTTP de health check */
+export const HEALTH_PORT: number = parseInt(process.env.HEALTH_PORT ?? '8080', 10);
+
+/** Webhook URL do Discord para alertas de operação (opcional) */
+export const OPS_WEBHOOK_URL: string | undefined = process.env.OPS_WEBHOOK_URL;
 
 /** Pontos por vitória/derrota (ranked) */
 export const POINTS_WIN = 1;
