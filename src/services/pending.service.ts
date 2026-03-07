@@ -40,8 +40,8 @@ export async function getPendingDuels(discordId: string, seasonId: number): Prom
         urgency = 1;
       } else if (
         duel.status === 'PROPOSED' &&
-        ((duel.opponentId === player.id && !duel.opponentAccepted) ||
-          (duel.witnessId === player.id && !duel.witnessAccepted))
+        duel.opponentId === player.id &&
+        !duel.opponentAccepted
       ) {
         urgency = 2;
       } else if (duel.status === 'ACCEPTED') {

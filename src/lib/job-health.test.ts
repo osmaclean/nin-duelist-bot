@@ -4,6 +4,10 @@ vi.mock('./logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock('./ops-webhook', () => ({
+  sendOpsAlert: vi.fn(),
+}));
+
 describe('lib/job-health', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -77,5 +81,42 @@ describe('lib/job-health', () => {
     checkJobHealth('unknown-job');
 
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('should send ops alert on first gap detection', async () => {
+    const { registerJob, checkJobHealth } = await import('./job-health');
+    const { sendOpsAlert } = await import('./ops-webhook');
+
+    registerJob('test-job', 60_000);
+    vi.advanceTimersByTime(120_001);
+
+    checkJobHealth('test-job');
+
+    expect(sendOpsAlert).toHaveBeenCalledWith(
+      'Job "test-job" sem sucesso',
+      expect.stringContaining('2min'),
+      'error',
+    );
+  });
+
+  it('should only send ops alert once until job recovers', async () => {
+    const { registerJob, checkJobHealth, markJobSuccess } = await import('./job-health');
+    const { sendOpsAlert } = await import('./ops-webhook');
+
+    registerJob('test-job', 60_000);
+    vi.advanceTimersByTime(120_001);
+
+    checkJobHealth('test-job');
+    checkJobHealth('test-job'); // second call
+
+    expect(sendOpsAlert).toHaveBeenCalledTimes(1);
+
+    // Recover
+    markJobSuccess('test-job');
+    vi.advanceTimersByTime(120_001);
+
+    checkJobHealth('test-job'); // should alert again after recovery + new gap
+
+    expect(sendOpsAlert).toHaveBeenCalledTimes(2);
   });
 });

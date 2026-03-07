@@ -5,6 +5,7 @@ import { notifySeasonEnding } from '../lib/notifications';
 import { logger } from '../lib/logger';
 import { withRetry } from '../lib/retry';
 import { registerJob, markJobSuccess, checkJobHealth } from '../lib/job-health';
+import { sendOpsAlert } from '../lib/ops-webhook';
 
 let clientRef: Client | null = null;
 
@@ -14,6 +15,7 @@ async function runSeasonCycle() {
     const season = await withRetry(() => getActiveSeason(), 'season-check:getActive');
     if (!season) {
       await withRetry(() => ensureActiveSeason(), 'season-check:ensure');
+      markJobSuccess('season-check');
       return;
     }
 
@@ -26,8 +28,8 @@ async function runSeasonCycle() {
       season.endDate.getTime() - now.getTime() <= SEASON_ENDING_WARNING_MS &&
       now < season.endDate
     ) {
+      await notifySeasonEnding(clientRef, season.id, season.number);
       await markSeasonEndingNotified(season.id);
-      notifySeasonEnding(clientRef, season.id, season.number).catch(() => {});
       logger.info('Aviso de season encerrando enviado', { seasonId: season.id });
     }
 
@@ -39,6 +41,11 @@ async function runSeasonCycle() {
     markJobSuccess('season-check');
   } catch (error) {
     logger.error('Erro no job season-check', { error: String(error) });
+    sendOpsAlert(
+      'Falha no job season-check',
+      `Erro: ${String(error)}`,
+      'error',
+    );
   }
 }
 

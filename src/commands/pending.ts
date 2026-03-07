@@ -35,20 +35,26 @@ export async function handlePendingCommand(interaction: ChatInputCommandInteract
     return;
   }
 
-  const duels = await getPendingDuels(interaction.user.id, season.id);
+  const allDuels = await getPendingDuels(interaction.user.id, season.id);
 
-  if (duels.length === 0) {
-    await interaction.editReply('Nenhum duelo pendente de ação sua.');
+  if (allDuels.length === 0) {
+    await interaction.editReply('Nenhum duelo pendente de a\u00e7\u00e3o sua.');
     return;
   }
 
+  const limit = interaction.options.getInteger('limit');
+  const duels = limit ? allDuels.slice(0, limit) : allDuels;
   const lines = duels.map(formatDuelLine);
 
   const embed = new EmbedBuilder()
     .setTitle('Suas Pendências')
     .setColor(Colors.Orange)
     .setDescription(lines.join('\n'))
-    .setFooter({ text: `${duels.length} duelo(s) pendente(s)` });
+    .setFooter({
+      text: limit && allDuels.length > limit
+        ? `Mostrando ${duels.length} de ${allDuels.length} duelo(s) pendente(s)`
+        : `${duels.length} duelo(s) pendente(s)`,
+    });
 
   await interaction.editReply({ embeds: [embed] });
 }

@@ -60,6 +60,10 @@ vi.mock('../lib/job-health', () => ({
   checkJobHealth: vi.fn(),
 }));
 
+vi.mock('../lib/ops-webhook', () => ({
+  sendOpsAlert: vi.fn(),
+}));
+
 function makeDuel(id: number, extra: Record<string, unknown> = {}) {
   return {
     id,
@@ -223,6 +227,24 @@ describe('jobs/expire-duels', () => {
 
     const { markJobSuccess } = await import('../lib/job-health');
     expect(markJobSuccess).toHaveBeenCalledWith('expire-duels');
+  });
+
+  it('should not call markJobSuccess after failed cycle', async () => {
+    const error = new Error('db error');
+    (prisma.duel.findMany as any)
+      .mockResolvedValueOnce([]) // immediate: warning
+      .mockResolvedValueOnce([]) // immediate: expire (success)
+      .mockResolvedValueOnce([]) // scheduled: warning
+      .mockRejectedValue(error); // scheduled: expire (fails)
+
+    const { markJobSuccess } = await import('../lib/job-health');
+
+    startExpireDuelsJob({ channels: { fetch: vi.fn() }, users: { fetch: vi.fn() } } as any);
+    await vi.advanceTimersByTimeAsync(0);
+    vi.mocked(markJobSuccess).mockClear();
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(markJobSuccess).not.toHaveBeenCalled();
   });
 
   it('should send expiry warning and mark duels as warned', async () => {

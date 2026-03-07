@@ -59,9 +59,6 @@ export function createDuelButtonHandler(config: HandlerConfig) {
   return async function (interaction: ButtonInteraction) {
     await interaction.deferUpdate();
 
-    // Immediate visual feedback: disable all buttons
-    disableAllButtons(interaction);
-
     // Debounce: prevent rapid double-clicks
     const cooldownKey = `btn:${interaction.user.id}:${interaction.customId}`;
     if (!checkCooldown(cooldownKey, BUTTON_COOLDOWN_MS)) {
@@ -73,6 +70,9 @@ export function createDuelButtonHandler(config: HandlerConfig) {
       await interaction.followUp({ content: result.error, ephemeral: true });
       return;
     }
+
+    // Disable buttons only after validation succeeds (avoids affecting embed for unauthorized users)
+    disableAllButtons(interaction);
 
     const updated = await config.execute(result.duelId, interaction, result.duel);
     if (!updated) {

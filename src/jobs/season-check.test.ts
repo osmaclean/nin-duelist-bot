@@ -39,6 +39,10 @@ vi.mock('../lib/job-health', () => ({
   checkJobHealth: vi.fn(),
 }));
 
+vi.mock('../lib/ops-webhook', () => ({
+  sendOpsAlert: vi.fn(),
+}));
+
 function makeClient() {
   return { users: { fetch: vi.fn() } } as any;
 }
@@ -59,7 +63,7 @@ describe('jobs/season-check', () => {
     expect(logger.info).toHaveBeenCalledWith('Job season-check iniciado');
   });
 
-  it('should ensure season when there is no active season', async () => {
+  it('should ensure season when there is no active season and mark success', async () => {
     (getActiveSeason as any).mockResolvedValue(null);
     (ensureActiveSeason as any).mockResolvedValue({});
 
@@ -69,6 +73,9 @@ describe('jobs/season-check', () => {
     expect(getActiveSeason).toHaveBeenCalledTimes(1);
     expect(ensureActiveSeason).toHaveBeenCalledTimes(1);
     expect(closeSeason).not.toHaveBeenCalled();
+
+    const { markJobSuccess } = await import('../lib/job-health');
+    expect(markJobSuccess).toHaveBeenCalledWith('season-check');
   });
 
   it('should do nothing when active season is not expired', async () => {
@@ -132,9 +139,24 @@ describe('jobs/season-check', () => {
     expect(logger.error).toHaveBeenCalledWith('Erro no job season-check', { error: 'Error: season fail' });
   });
 
+  it('should send ops alert when season-check fails', async () => {
+    const error = new Error('db down');
+    (getActiveSeason as any).mockRejectedValue(error);
+
+    startSeasonCheckJob(makeClient());
+    await vi.advanceTimersByTimeAsync(1000);
+
+    const { sendOpsAlert } = await import('../lib/ops-webhook');
+    expect(sendOpsAlert).toHaveBeenCalledWith(
+      'Falha no job season-check',
+      'Erro: Error: db down',
+      'error',
+    );
+  });
+
   // ─── Season ending notification tests ──────────────
 
-  it('should send season ending notification when within 24h of end', async () => {
+  it('should send season ending notification when within 24h of end (notify before marking)', async () => {
     vi.setSystemTime(new Date('2026-02-26T12:00:00.000Z'));
     (getActiveSeason as any).mockResolvedValue({
       id: 10,
@@ -143,12 +165,41 @@ describe('jobs/season-check', () => {
       endingNotificationSent: false,
     });
 
+    // Track call order
+    const callOrder: string[] = [];
+    (notifySeasonEnding as any).mockImplementation(() => {
+      callOrder.push('notify');
+      return Promise.resolve();
+    });
+    (markSeasonEndingNotified as any).mockImplementation(() => {
+      callOrder.push('mark');
+      return Promise.resolve();
+    });
+
     startSeasonCheckJob(makeClient());
     await vi.advanceTimersByTimeAsync(1000);
 
-    expect(markSeasonEndingNotified).toHaveBeenCalledWith(10);
     expect(notifySeasonEnding).toHaveBeenCalledWith(expect.anything(), 10, 2);
+    expect(markSeasonEndingNotified).toHaveBeenCalledWith(10);
+    expect(callOrder).toEqual(['notify', 'mark']);
     expect(logger.info).toHaveBeenCalledWith('Aviso de season encerrando enviado', { seasonId: 10 });
+  });
+
+  it('should not mark as notified if notification fails', async () => {
+    vi.setSystemTime(new Date('2026-02-26T12:00:00.000Z'));
+    (getActiveSeason as any).mockResolvedValue({
+      id: 10,
+      number: 2,
+      endDate: new Date('2026-02-27T06:00:00.000Z'),
+      endingNotificationSent: false,
+    });
+    (notifySeasonEnding as any).mockRejectedValue(new Error('DM failed'));
+
+    startSeasonCheckJob(makeClient());
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(notifySeasonEnding).toHaveBeenCalled();
+    expect(markSeasonEndingNotified).not.toHaveBeenCalled();
   });
 
   it('should not send season ending notification when already sent', async () => {

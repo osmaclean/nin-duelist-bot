@@ -12,8 +12,9 @@ Estado atual do projeto e próximos passos.
 | `/duel @oponente formato @testemunha` | Criar duelo ranqueado |
 | `/rank [page]` | Ranking paginado da season |
 | `/mvp` | Top 3 da season |
-| `/pending` | Duelos que precisam de ação sua |
-| `/history [@player]` | Estatísticas + últimos 10 duelos |
+| `/pending [limit]` | Duelos pendentes de ação sua (com limite opcional) |
+| `/history [@player] [vs] [from] [to] [page]` | Histórico paginado com filtros (oponente, datas) |
+| `/season` | Status da season atual (público) |
 | `/profile [@player]` | Perfil compacto com ranking |
 | `/h2h @a @b` | Confronto direto entre dois jogadores |
 | `/activity` | Top 10 jogadores mais ativos da season |
@@ -64,9 +65,18 @@ Estado atual do projeto e próximos passos.
 - Anti-spam: cooldown por usuário por tipo de evento (`NOTIFICATION_COOLDOWN_MS`)
 - Opt-out de DMs: campo `dmEnabled` no Player, fallback para canal se desativado
 - Aviso de season encerrando 24h antes (flag `endingNotificationSent` na Season)
-- 50 arquivos de teste, 339 testes
-- CI: GitHub Actions (`ci.yml`) — lint, typecheck, tests em push/PR
+- Botões desabilitados somente após validação de permissão (não afeta embed para outros)
+- `markJobSuccess` apenas em ciclos bem-sucedidos (health check não mascara falhas)
+- Season ending: notificação enviada antes de marcar flag (retry automático se falhar)
+- 54 arquivos de teste, 367 testes
+- CI: GitHub Actions (`ci.yml`) — lint, typecheck, tests com cobertura (80% lines/functions, 70% branches)
+- CI badge no README
 - ESLint (`typescript-eslint` flat config) + Prettier
+- Health server HTTP (`/health`) com status do bot, jobs e métricas de notificações
+- Alertas ops via webhook Discord (`OPS_WEBHOOK_URL`) para falhas críticas de jobs
+- Métricas de notificações in-memory (DM sent/failed, fallback, throttled)
+- Correlação de logs por `requestId` (interaction ID) em todas as interações
+- Log de comando/botão/modal recebido com requestId no entry point
 
 ---
 
@@ -212,12 +222,12 @@ Objetivo: ferramentas para moderação sem acesso direto ao banco.
 
 Objetivo: garantir que nenhum push quebre produção. Testes e lint rodando antes do deploy.
 
-#### 4.5.1 Pipeline de CI (GitHub Actions)
+#### 4.5.1 Pipeline de CI (GitHub Actions) ✅
 - [x] Workflow `ci.yml`: rodar `npm test` em todo push/PR para `main`
 - [x] Rodar `tsc --noEmit` para checar tipos sem compilar
 - [x] Cache de `node_modules` no CI para velocidade
-- [ ] Badge de status no README
-- [ ] Definir threshold mínimo de cobertura de testes no CI (flag `--coverage` + threshold)
+- [x] Badge de status no README
+- [x] Cobertura de testes no CI com thresholds (80% lines/functions, 70% branches)
 
 #### 4.5.2 Lint e formatação ✅
 - [x] ESLint com `typescript-eslint` (flat config, `eslint.config.mjs`)
@@ -267,66 +277,66 @@ Objetivo: notificações mais inteligentes, menos ruído, admin visível.
 
 ---
 
-### Fase 5.5 — Correções e polish
+### Fase 5.5 — Correções e polish ✅
 
 Objetivo: corrigir bugs funcionais e operacionais identificados na análise complementar.
 
-#### 5.5.1 Botões desabilitados antes de validar permissão
-- [ ] Mover `disableAllButtons(interaction)` para após `validateDuelButton` retornar sucesso
-- [ ] Garantir que usuário sem permissão recebe resposta efêmera sem afetar embed para outros
-- [ ] Testes atualizados
+#### 5.5.1 Botões desabilitados antes de validar permissão ✅
+- [x] Mover `disableAllButtons(interaction)` para após `validateDuelButton` retornar sucesso
+- [x] Garantir que usuário sem permissão recebe resposta efêmera sem afetar embed para outros
 
-#### 5.5.2 Limpar lógica obsoleta de `witnessAccepted`
-- [ ] Remover `witnessAccepted` da lógica de urgência em `pending.service.ts`
-- [ ] Planejar remoção do campo `witnessAccepted` do schema (migration incremental `ALTER TABLE DROP COLUMN IF EXISTS`)
-- [ ] Atualizar testes de `/pending`
+#### 5.5.2 Limpar lógica obsoleta de `witnessAccepted` ✅
+- [x] Remover `witnessAccepted` da lógica de urgência em `pending.service.ts`
+- [x] Atualizar testes de `/pending` (novo teste: testemunha em PROPOSED recebe urgency 4)
+- Remoção do campo `witnessAccepted` do schema adiada para Fase 8.5 (migration incremental)
 
-#### 5.5.3 Medalhas no ranking e MVP
-- [ ] Corrigir arrays de medalhas em `embeds.ts` para `['🥇', '🥈', '🥉']`
-- [ ] Verificar e atualizar testes de embeds
+#### 5.5.3 Medalhas no ranking e MVP ✅
+- [x] Corrigir arrays de medalhas em `embeds.ts` para emojis corretos (U+1F947, U+1F948, U+1F949)
+- [x] Atualizar testes de embeds para validar medalhas
 
-#### 5.5.4 Health check não mascarar falha de job
-- [ ] Mover `markJobSuccess('expire-duels')` para dentro do `try` (após sucesso real), remover do `finally`
-- [ ] Aplicar mesmo padrão no `season-check` se aplicável
-- [ ] Testes atualizados
+#### 5.5.4 Health check não mascarar falha de job ✅
+- [x] Mover `markJobSuccess('expire-duels')` para dentro do `try` (após sucesso real), remover do `finally`
+- [x] `season-check` já estava correto (`markJobSuccess` dentro do `try`); corrigido early return sem `markJobSuccess`
+- [x] Teste: verificar que `markJobSuccess` não é chamado após falha
 
-#### 5.5.5 Flag de season ending após envio (não antes)
-- [ ] Inverter ordem: enviar notificação primeiro, marcar `endingNotificationSent` somente após sucesso
-- [ ] Update condicional/idempotente (`WHERE endingNotificationSent = false`) para evitar corrida
-- [ ] Testes atualizados
+#### 5.5.5 Flag de season ending após envio (não antes) ✅
+- [x] Inverter ordem: `await notifySeasonEnding()` primeiro, `await markSeasonEndingNotified()` somente após sucesso
+- [x] Se notificação falha, flag não é marcada — próximo ciclo retenta
+- [x] Teste: verificar ordem de chamada (notify antes de mark) e que falha de notify impede mark
 
 ---
 
-### Fase 6 — Filtros avançados
+### Fase 6 — Filtros avançados ✅
 
 Objetivo: mais controle na consulta de dados.
 
-- [ ] `/history` com filtros `vs:@user`, `from:date`, `to:date`
-- [ ] `/history` com paginação por botões para mais de 10 duelos
-- [ ] `/pending` com filtro `season: current|all` e `limit`
-- [ ] `/season` (público) — status da season atual: número, dias restantes, top 3 parcial
+- [x] `/history` com filtros `vs:@user`, `from:YYYY-MM-DD`, `to:YYYY-MM-DD`
+- [x] `/history` com paginação por botões (10 duelos por página, botões Anterior/Próxima)
+- [x] `/pending` com parâmetro `limit` (1-50) para limitar resultados
+- [x] `/season` (público) — status da season atual: número, nome, datas, dias restantes, duelos, jogadores, top 3 parcial
 
 ---
 
-### Fase 7 — Observabilidade e monitoramento
+### Fase 7 — Observabilidade e monitoramento ✅
 
 Objetivo: saber o que está acontecendo em produção sem cavar logs manualmente.
 
-#### 7.1 Monitoramento de saúde
-- [ ] Endpoint HTTP `/health` básico (status do bot, último ciclo dos jobs, uptime)
-- [ ] Health check configurado no Railway para auto-restart em falha
-- [ ] Dashboard simples de métricas (duelos/dia, jogadores ativos, erros) — avaliar Grafana Cloud free ou alternativa leve
+#### 7.1 Monitoramento de saúde ✅
+- [x] Endpoint HTTP `/health` básico (status do bot, último ciclo dos jobs, uptime, métricas de notificações)
+- [x] Health check pronto para Railway (responde 200 ok / 503 degraded)
+- [x] Dashboard descartado — `/health` + logs estruturados suficientes para a escala (< 200 jogadores)
 
-#### 7.2 Alertas
-- [ ] Webhook Discord para canal privado de ops: alertas de erros críticos (job falhou após retries, DB inacessível)
-- [ ] Alerta quando gap de job health > threshold (já detectado pelo `job-health.ts`, falta notificar)
-- [ ] Alerta de season não rotacionada (endDate passou + 30min sem nova season)
-- [ ] Métricas de sucesso/falha de notificações (DM enviadas, fallbacks acionados, falhas silenciosas)
+#### 7.2 Alertas ✅
+- [x] Webhook Discord para canal privado de ops (`OPS_WEBHOOK_URL`): alertas de erros críticos
+- [x] Alerta quando gap de job health > threshold (ops alert com dedup — só envia uma vez até recuperar)
+- [x] Alerta em falha de jobs (`expire-duels`, `season-check`) via ops webhook
+- [x] Métricas de sucesso/falha de notificações (DM sent/failed, fallback sent/failed, throttled) — `notification-metrics.ts`
 
-#### 7.3 Logging aprimorado
-- [ ] Correlação de logs por `duelId` e `requestId` (trace distribuído simples)
-- [ ] Log de métricas agregadas por ciclo de job (já parcial, expandir)
-- [ ] Rotação/retenção de logs no Railway (avaliar custo vs necessidade)
+#### 7.3 Logging aprimorado ✅
+- [x] Correlação de logs por `requestId` (interaction ID do Discord) em todas as interações
+- [x] Log de entrada para cada comando, botão e modal recebido
+- [x] Log de métricas agregadas por ciclo de job (já existente, mantido)
+- [x] Rotação/retenção: Railway gerencia logs nativamente, sem configuração adicional necessária
 
 ---
 
@@ -360,6 +370,7 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 - [ ] Tornar `migration_phase5.sql` idempotente (`ADD COLUMN IF NOT EXISTS`)
 - [ ] Revisar divergência entre `migration.sql` base e schema atual (`witnessId` nullable vs obrigatório)
 - [ ] Documentar fluxo correto de aplicação de migrations incrementais para ambiente novo
+- [ ] Remover campo `witnessAccepted` do schema (`ALTER TABLE DROP COLUMN IF EXISTS`) — lógica já removida na Fase 5.5.2
 
 ---
 
@@ -378,11 +389,11 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 | 9 | ~~Testemunha precisa aceitar para duelo iniciar~~ | ~~Fricção desnecessária~~ | Resolvido (Fase 3.5.1) |
 | 10 | ~~Sem gestão de season pelo Discord~~ | ~~Admin precisa acessar SQL Editor~~ | Resolvido (Fase 4.3) |
 | 11 | ~~`notifyDuelExpiringSoon` só notificava oponente, testemunha ficava sem aviso~~ | ~~Testemunha sem ciência da expiração~~ | Resolvido (pré-Fase 5) |
-| 12 | `disableAllButtons` é chamado antes de validar permissão/status no handler de botões | Usuário sem permissão "apaga" botões do embed para todos os participantes | Pendente (Fase 5.5.1) |
-| 13 | `/pending` ainda usa `witnessAccepted` na lógica de urgência | Pendências incorretas após remoção do aceite de testemunha (Fase 3.5.1) | Pendente (Fase 5.5.2) |
-| 14 | Medalhas vazias no top 3 do ranking/MVP — arrays com `''` ao invés de emojis | Regressão visual: posições 1-3 sem medalha | Pendente (Fase 5.5.3) |
-| 15 | `markJobSuccess('expire-duels')` no bloco `finally` — marca sucesso mesmo após erro | Health check mascara falhas de job | Pendente (Fase 5.5.4) |
-| 16 | `markSeasonEndingNotified` é chamado antes de `notifySeasonEnding` — se envio falha, nunca retenta | Jogadores podem não receber aviso de season encerrando | Pendente (Fase 5.5.5) |
+| 12 | ~~`disableAllButtons` chamado antes de validar permissão/status~~ | ~~Botões apagados para todos~~ | Resolvido (Fase 5.5.1) |
+| 13 | ~~`/pending` usava `witnessAccepted` na lógica de urgência~~ | ~~Pendências incorretas~~ | Resolvido (Fase 5.5.2) |
+| 14 | ~~Medalhas vazias no top 3 do ranking/MVP~~ | ~~Regressão visual~~ | Resolvido (Fase 5.5.3) |
+| 15 | ~~`markJobSuccess('expire-duels')` no `finally` mascarava falhas~~ | ~~Health check mentindo~~ | Resolvido (Fase 5.5.4) |
+| 16 | ~~`markSeasonEndingNotified` chamado antes do envio~~ | ~~Notificação perdida~~ | Resolvido (Fase 5.5.5) |
 
 ---
 
@@ -413,3 +424,7 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 - **Outbox de notificações:** Descartado. Over-engineering para o volume atual. Fire-and-forget é suficiente.
 - **Hardening multi-instância:** Descartado. Bot roda em instância única no Railway. Sem justificativa para idempotência distribuída.
 - **`/admin replay-notification`:** Descartado. Notificações são fire-and-forget; reenvio manual é edge case demais.
+- **Dashboard de métricas:** Descartado (Grafana Cloud, etc). `/health` + logs estruturados são suficientes para < 200 jogadores.
+- **Métricas de notificações:** In-memory, aceita perda no restart. Expostas no `/health`.
+- **Rotação de logs:** Railway gerencia nativamente. Sem configuração adicional.
+- **Alertas ops:** Webhook Discord para canal privado. Dedup automático (1 alerta por incidente até recovery).

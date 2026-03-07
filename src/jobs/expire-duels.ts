@@ -7,6 +7,7 @@ import { DUEL_EXPIRY_MS, EXPIRE_CHECK_INTERVAL_MS, EXPIRY_WARNING_MS } from '../
 import { logger } from '../lib/logger';
 import { withRetry } from '../lib/retry';
 import { registerJob, markJobSuccess, checkJobHealth } from '../lib/job-health';
+import { sendOpsAlert } from '../lib/ops-webhook';
 
 /**
  * Warn duels that are close to expiring (within EXPIRY_WARNING_MS)
@@ -73,7 +74,10 @@ async function runExpireCycle(client: Client) {
       'expire-duels:findMany',
     );
 
-    if (expiring.length === 0) return;
+    if (expiring.length === 0) {
+      markJobSuccess('expire-duels');
+      return;
+    }
 
     await withRetry(
       () =>
@@ -118,14 +122,16 @@ async function runExpireCycle(client: Client) {
 
       notifyDuelExpired(client, { ...duel, status: 'EXPIRED' as const }).catch(() => {});
     }
+
+    markJobSuccess('expire-duels');
   } catch (error) {
     logger.error('Erro no job expire-duels', { error: String(error) });
+    sendOpsAlert('Falha no job expire-duels', `Erro: ${String(error)}`, 'error');
   } finally {
     const durationMs = Date.now() - startTime;
     if (processed > 0 || embedFailures > 0) {
       logger.info('Ciclo expire-duels concluído', { processed, embedFailures, durationMs });
     }
-    markJobSuccess('expire-duels');
   }
 }
 

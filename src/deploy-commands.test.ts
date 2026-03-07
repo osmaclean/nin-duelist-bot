@@ -102,7 +102,7 @@ describe('deploy-commands', () => {
     expect(Routes.applicationGuildCommands).toHaveBeenCalledWith('client-id', 'guild-id');
     expect(put).toHaveBeenCalledWith('guild-route', expect.objectContaining({ body: expect.any(Array) }));
     const body = put.mock.calls[0][1].body;
-    expect(body).toHaveLength(11);
+    expect(body).toHaveLength(12);
     expect(body.map((c: any) => c.name)).toEqual([
       'duel',
       'rank',
@@ -113,6 +113,7 @@ describe('deploy-commands', () => {
       'h2h',
       'activity',
       'records',
+      'season',
       'settings',
       'admin',
     ]);

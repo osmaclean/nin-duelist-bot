@@ -10,6 +10,7 @@ import { handleH2hCommand } from './h2h';
 import { handleActivityCommand } from './activity';
 import { handleRecordsCommand } from './records';
 import { handleSettingsCommand } from './settings';
+import { handleSeasonCommand } from './season';
 
 export const commandHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<void>> = {
   duel: handleDuelCommand,
@@ -23,4 +24,5 @@ export const commandHandlers: Record<string, (i: ChatInputCommandInteraction) =>
   activity: handleActivityCommand,
   records: handleRecordsCommand,
   settings: handleSettingsCommand,
+  season: handleSeasonCommand,
 };

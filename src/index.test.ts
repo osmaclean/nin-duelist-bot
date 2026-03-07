@@ -29,11 +29,19 @@ describe('index', () => {
       logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     }));
 
+    const startHealthServer = vi.fn();
+    const stopHealthServer = vi.fn();
+    vi.doMock('./lib/health-server', () => ({
+      startHealthServer,
+      stopHealthServer,
+    }));
+
     await import('./index');
 
     expect(Client).toHaveBeenCalledWith({ intents: [123] });
     expect(registerReadyEvent).toHaveBeenCalledWith(clientInstance);
     expect(registerInteractionEvent).toHaveBeenCalledWith(clientInstance);
     expect(clientInstance.login).toHaveBeenCalledWith('discord-token');
+    expect(startHealthServer).toHaveBeenCalledWith(clientInstance);
   });
 });

@@ -11,7 +11,6 @@ function duelBase(extra: Record<string, unknown> = {}) {
     witness: { discordId: '333' },
     winner: null,
     opponentAccepted: false,
-    witnessAccepted: false,
     scoreWinner: null,
     scoreLoser: null,
     createdAt: new Date('2026-02-26T10:00:00.000Z'),
@@ -122,25 +121,21 @@ describe('lib/embeds', () => {
     expect(json.description).toContain('**22.** <@22> — 8pts | 5V 2D | Streak: 2 (max 3)');
   });
 
-  it('buildRankEmbed should render top-3 branch (rank <= 3)', () => {
-    const embed = buildRankEmbed(
-      1,
-      [
-        {
-          player: { discordId: '101' } as any,
-          points: 3,
-          wins: 3,
-          losses: 0,
-          streak: 3,
-          peakStreak: 3,
-        },
-      ],
-      1,
-      1,
-      1,
-    ).toJSON();
+  it('buildRankEmbed should render top-3 medals', () => {
+    const entries = [1, 2, 3].map((i) => ({
+      player: { discordId: `${i}` } as any,
+      points: 10 - i,
+      wins: 10 - i,
+      losses: i,
+      streak: 0,
+      peakStreak: 0,
+    }));
 
-    expect(embed.description).toContain('<@101> — 3pts | 3V 0D | Streak: 3 (max 3)');
+    const embed = buildRankEmbed(1, entries, 1, 1, 1).toJSON();
+
+    expect(embed.description).toContain('\u{1F947} <@1>');
+    expect(embed.description).toContain('\u{1F948} <@2>');
+    expect(embed.description).toContain('\u{1F949} <@3>');
   });
 
   it('buildRankEmbed should show empty state message', () => {
@@ -148,7 +143,7 @@ describe('lib/embeds', () => {
     expect(embed.description).toBe('Nenhum jogador nesta season ainda.');
   });
 
-  it('buildMvpEmbed should render top lines and empty state', () => {
+  it('buildMvpEmbed should render top lines with medals and empty state', () => {
     const nonEmpty = buildMvpEmbed(9, [
       {
         player: { discordId: '99' } as any,
@@ -162,7 +157,7 @@ describe('lib/embeds', () => {
     const empty = buildMvpEmbed(9, []).toJSON();
 
     expect(nonEmpty.title).toBe('MVP — Season 9');
-    expect(nonEmpty.description).toContain('<@99> — 20pts | 10V 0D | Peak Streak: 10');
+    expect(nonEmpty.description).toContain('\u{1F947} <@99> — 20pts | 10V 0D | Peak Streak: 10');
     expect(empty.description).toBe('Nenhum jogador nesta season ainda.');
   });
 
