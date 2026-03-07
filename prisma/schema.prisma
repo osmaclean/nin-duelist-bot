@@ -86,7 +86,6 @@ model Duel {
   scoreLoser  Int?
 
   opponentAccepted Boolean @default(false)
-  witnessAccepted  Boolean @default(false)
   expiryWarned     Boolean @default(false)
 
   channelId String

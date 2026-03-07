@@ -1,8 +1,9 @@
-import { ModalSubmitInteraction } from 'discord.js';
+import { ModalSubmitInteraction, TextChannel } from 'discord.js';
 import { getDuelById, submitResult } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
 import { notifyWitnessValidation } from '../lib/notifications';
+import { validateScore } from '../lib/validation';
 
 export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction) {
   const parts = interaction.customId.split(':');
@@ -35,12 +36,10 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
     return;
   }
 
-  // MD3 validation: 2-0 or 2-1
-  const validScores = (scoreWinner === 2 && scoreLoser === 0) || (scoreWinner === 2 && scoreLoser === 1);
-
-  if (!validScores) {
+  if (!validateScore(duel.format, scoreWinner, scoreLoser)) {
+    const validScores = duel.format === 'MD1' ? '1-0' : '2-0 ou 2-1';
     await interaction.reply({
-      content: 'Placar inválido para MD3. Placares válidos: 2-0 ou 2-1',
+      content: `Placar inválido para ${duel.format}. Placares válidos: ${validScores}`,
       ephemeral: true,
     });
     return;
@@ -59,7 +58,7 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
     if (duel.channelId && duel.messageId) {
       const channel = await interaction.client.channels.fetch(duel.channelId);
       if (channel && 'messages' in channel) {
-        const message = await (channel as any).messages.fetch(duel.messageId);
+        const message = await (channel as TextChannel).messages.fetch(duel.messageId);
         const embed = buildDuelEmbed(updated);
         const components = buildDuelComponents(updated);
         await message.edit({ embeds: [embed], components });

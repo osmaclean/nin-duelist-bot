@@ -27,6 +27,7 @@ Estado atual do projeto e próximos passos.
 | `/admin season status` | Info da season ativa (admin) |
 | `/admin season end` | Encerrar season (admin) |
 | `/admin season create [name] [duration]` | Criar nova season (admin) |
+| `/admin season repair season_id` | Recalcular stats de uma season (admin) |
 | `/admin search player @player` | Buscar duelos de um jogador (admin) |
 | `/admin search status STATUS` | Buscar duelos por status (admin) |
 | `/settings notifications on\|off` | Ativar/desativar DMs do bot |
@@ -68,7 +69,7 @@ Estado atual do projeto e próximos passos.
 - Botões desabilitados somente após validação de permissão (não afeta embed para outros)
 - `markJobSuccess` apenas em ciclos bem-sucedidos (health check não mascara falhas)
 - Season ending: notificação enviada antes de marcar flag (retry automático se falhar)
-- 54 arquivos de teste, 367 testes
+- 55 arquivos de teste, 380 testes
 - CI: GitHub Actions (`ci.yml`) — lint, typecheck, tests com cobertura (80% lines/functions, 70% branches)
 - CI badge no README
 - ESLint (`typescript-eslint` flat config) + Prettier
@@ -77,6 +78,13 @@ Estado atual do projeto e próximos passos.
 - Métricas de notificações in-memory (DM sent/failed, fallback, throttled)
 - Correlação de logs por `requestId` (interaction ID) em todas as interações
 - Log de comando/botão/modal recebido com requestId no entry point
+- Sanitização de inputs de texto (`sanitizeText`) contra @everyone/@here injection
+- Validação centralizada de placar por formato (`validateScore`)
+- Transaction timeout explícito (10s) em todas as `$transaction`
+- CHECK constraints no banco para integridade de placar e winnerId
+- Índice único parcial em Season(active) para prevenir múltiplas seasons ativas
+- `/admin season repair` — recalcula stats de PlayerSeason a partir dos duelos
+- `as any` eliminados do código fonte (substituídos por tipos Discord.js)
 
 ---
 
@@ -340,37 +348,39 @@ Objetivo: saber o que está acontecendo em produção sem cavar logs manualmente
 
 ---
 
-### Fase 8 — Dívidas técnicas e hardening
+### Fase 8 — Dívidas técnicas e hardening ✅
 
 Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 
-#### 8.1 Validação de input
-- [ ] Sanitizar inputs de texto em commands (reason no admin, nomes em embeds) contra injection em embeds Discord
-- [ ] Validar limites numéricos explícitos em scores (ex: scoreWinner <= 3 para MD3)
-- [ ] Centralizar validação de formato de duelo (`MD1`/`MD3`) em helper reutilizável
+#### 8.1 Validação de input ✅
+- [x] Sanitizar inputs de texto em commands (`sanitizeText` — neutraliza @everyone/@here, limita tamanho)
+- [x] Validar limites numéricos explícitos em scores (`validateScore` — MD1: 1-0, MD3: 2-0 ou 2-1)
+- [x] Centralizar validação de formato de duelo em `lib/validation.ts` (usado em admin fix-result e submit-score)
 
-#### 8.2 Tipagem e contratos
-- [ ] Reduzir `as any` no código fonte (12 warnings restantes do ESLint)
+#### 8.2 Tipagem e contratos ✅
+- [x] Reduzir `as any` no código fonte — substituídos por `as TextChannel` e `as GuildMemberRoleManager`
 - [x] ~~Corrigir `admin.ts:545` — trocar `status as any` por `status as DuelStatus`~~ (resolvido na Fase 5)
-- [ ] Tipar retornos de services que retornam `any` implícito
-- [ ] Criar tipos discriminados para estados do duelo (DuelProposed, DuelAccepted, etc.) para type safety na máquina de estados
+- [x] Corrigir `(season as any).name` — removido cast desnecessário (tipo já inclui `name`)
+- [x] Tipar `duelWhere` em `history.service.ts` como `Prisma.DuelWhereInput` (era `any`)
+- [x] Tipos discriminados para estados do duelo: avaliado e descartado (over-engineering para a escala atual)
 
-#### 8.3 Resiliência de estado
-- [ ] Avaliar persistir cooldowns em memória vs aceitar perda no restart (decisão documentada, manter se aceitável)
-- [ ] Timeout de transações Prisma (`$transaction` com `timeout` explícito) para evitar lock infinito
-- [ ] Tratamento de `PrismaClientKnownRequestError` específico (unique constraint, not found) vs erro genérico
+#### 8.3 Resiliência de estado ✅
+- [x] Cooldown in-memory: decisão documentada — aceita perda no restart (já estava nas Decisões de Produto)
+- [x] Timeout de transações Prisma: `{ timeout: 10_000 }` em `confirmAndApplyResult` e admin `fix-result`; `{ timeout: 15_000 }` em `repairSeasonStats`
+- [x] `PrismaClientKnownRequestError`: avaliado — erros genéricos são suficientes para a escala; Prisma já loga detalhes internamente
 
-#### 8.4 Integridade no banco de dados
-- [ ] `CHECK` constraint para coerência de placar por formato (MD1: 1-0 apenas; MD3: 2-0 ou 2-1 apenas)
-- [ ] `CHECK` constraint para garantir `winnerId IN (challengerId, opponentId)` quando resultado existir
-- [ ] Índice único parcial em `Season(active)` quando `active = true` — prevenir múltiplas seasons ativas
-- [ ] `/admin repair season <id>` — recalcular `PlayerSeason` a partir dos duelos confirmados (recuperação de dados)
+#### 8.4 Integridade no banco de dados ✅
+- [x] `CHECK` constraint `Duel_score_format_check`: placar coerente com formato
+- [x] `CHECK` constraint `Duel_winner_participant_check`: winnerId IN (challengerId, opponentId)
+- [x] Índice único parcial `Season_single_active_idx`: previne múltiplas seasons ativas
+- [x] `/admin season repair <id>` — recalcula `PlayerSeason` a partir dos duelos confirmados
 
-#### 8.5 Manutenção de migrations
-- [ ] Tornar `migration_phase5.sql` idempotente (`ADD COLUMN IF NOT EXISTS`)
-- [ ] Revisar divergência entre `migration.sql` base e schema atual (`witnessId` nullable vs obrigatório)
-- [ ] Documentar fluxo correto de aplicação de migrations incrementais para ambiente novo
-- [ ] Remover campo `witnessAccepted` do schema (`ALTER TABLE DROP COLUMN IF EXISTS`) — lógica já removida na Fase 5.5.2
+#### 8.5 Manutenção de migrations ✅
+- [x] Tornar `migration_phase5.sql` idempotente (`ADD COLUMN IF NOT EXISTS`)
+- [x] Corrigir `witnessId` em `migration.sql` base (era nullable, agora NOT NULL + RESTRICT)
+- [x] Migration `migration_phase8.sql`: drop witnessAccepted, CHECK constraints, índice parcial
+- [x] Remover campo `witnessAccepted` do Prisma schema
+- [x] Fluxo de migrations documentado: migration.sql → migration_phase5.sql → migration_phase8.sql
 
 ---
 
@@ -421,6 +431,9 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 - **Anti-spam notificações:** Cooldown de 5 min por usuário por tipo de evento. In-memory, aceita perda no restart.
 - **Admin notifica:** Todas as ações admin (cancel, reopen, force-expire, fix-result) notificam os duelistas com reason.
 - **Season ending:** Aviso 24h antes do encerramento. Flag `endingNotificationSent` na Season para dedup persistente.
+- **Tipos discriminados de estados do duelo:** Descartado. Over-engineering para a escala. O enum DuelStatus + optimistic locking é suficiente.
+- **PrismaClientKnownRequestError específico:** Descartado. Catch genérico é suficiente; Prisma loga detalhes internamente.
+- **Persistência de cooldowns:** Decisão mantida — in-memory, aceita perda no restart. Redis não se justifica para < 200 jogadores.
 - **Outbox de notificações:** Descartado. Over-engineering para o volume atual. Fire-and-forget é suficiente.
 - **Hardening multi-instância:** Descartado. Bot roda em instância única no Railway. Sem justificativa para idempotência distribuída.
 - **`/admin replay-notification`:** Descartado. Notificações são fire-and-forget; reenvio manual é edge case demais.

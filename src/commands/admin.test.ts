@@ -51,6 +51,7 @@ vi.mock('../services/season.service', () => ({
   getSeasonPodium: vi.fn(),
   adminEndSeason: vi.fn().mockResolvedValue(undefined),
   adminCreateSeason: vi.fn(),
+  repairSeasonStats: vi.fn(),
 }));
 
 vi.mock('../services/search.service', () => ({
@@ -67,7 +68,7 @@ vi.mock('../lib/notifications', () => ({
 
 vi.mock('../lib/prisma', () => ({
   prisma: {
-    $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) =>
+    $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>, _opts?: unknown) =>
       fn({
         $executeRaw: vi.fn(),
         duel: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUnique: vi.fn() },
@@ -372,6 +373,7 @@ describe('commands/admin', () => {
     it('should fix result with transaction and log audit', async () => {
       const confirmed = makeDuel({
         status: 'CONFIRMED',
+        format: 'MD3',
         winnerId: 1,
         challengerId: 1,
         opponentId: 2,

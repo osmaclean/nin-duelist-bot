@@ -125,6 +125,12 @@ const commands = [
             .addIntegerOption((o) =>
               o.setName('duration').setDescription('Duração em dias (padrão: 30)').setMinValue(1).setMaxValue(365),
             ),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName('repair')
+            .setDescription('Recalcular stats de uma season a partir dos duelos confirmados')
+            .addIntegerOption((o) => o.setName('season_id').setDescription('ID da season').setRequired(true)),
         ),
     )
     .addSubcommandGroup((group) =>

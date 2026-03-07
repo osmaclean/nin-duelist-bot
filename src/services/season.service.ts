@@ -1,6 +1,6 @@
 import { DuelStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { SEASON_DURATION_DAYS } from '../config';
+import { SEASON_DURATION_DAYS, POINTS_WIN, POINTS_LOSS } from '../config';
 import { logger } from '../lib/logger';
 
 const TERMINAL_STATUSES: DuelStatus[] = ['CONFIRMED', 'CANCELLED', 'EXPIRED'];
@@ -161,4 +161,72 @@ export async function adminCreateSeason(name: string | null, durationDays: numbe
 
   logger.info('Season criada por admin', { seasonNumber: season.number, name, durationDays });
   return season;
+}
+
+export async function repairSeasonStats(
+  seasonId: number,
+): Promise<{ playersUpdated: number } | null> {
+  const season = await prisma.season.findUnique({ where: { id: seasonId } });
+  if (!season) return null;
+
+  const duels = await prisma.duel.findMany({
+    where: { seasonId, status: 'CONFIRMED' },
+    orderBy: { updatedAt: 'asc' },
+    select: { challengerId: true, opponentId: true, winnerId: true },
+  });
+
+  // Build stats per player
+  const stats = new Map<number, { points: number; wins: number; losses: number; streak: number; peakStreak: number }>();
+
+  function getStats(playerId: number) {
+    if (!stats.has(playerId)) {
+      stats.set(playerId, { points: 0, wins: 0, losses: 0, streak: 0, peakStreak: 0 });
+    }
+    return stats.get(playerId)!;
+  }
+
+  for (const duel of duels) {
+    if (!duel.winnerId) continue;
+    const loserId = duel.winnerId === duel.challengerId ? duel.opponentId : duel.challengerId;
+
+    const winnerStats = getStats(duel.winnerId);
+    winnerStats.points += POINTS_WIN;
+    winnerStats.wins++;
+    winnerStats.streak++;
+    winnerStats.peakStreak = Math.max(winnerStats.peakStreak, winnerStats.streak);
+
+    const loserStats = getStats(loserId);
+    loserStats.points += POINTS_LOSS;
+    loserStats.losses++;
+    loserStats.streak = 0;
+  }
+
+  // Update all PlayerSeason records in a transaction
+  await prisma.$transaction(
+    Array.from(stats.entries()).map(([playerId, s]) =>
+      prisma.playerSeason.upsert({
+        where: { playerId_seasonId: { playerId, seasonId } },
+        update: {
+          points: s.points,
+          wins: s.wins,
+          losses: s.losses,
+          streak: s.streak,
+          peakStreak: s.peakStreak,
+        },
+        create: {
+          playerId,
+          seasonId,
+          points: s.points,
+          wins: s.wins,
+          losses: s.losses,
+          streak: s.streak,
+          peakStreak: s.peakStreak,
+        },
+      }),
+    ),
+    { timeout: 15_000 },
+  );
+
+  logger.info('Season stats reparados', { seasonId, playersUpdated: stats.size });
+  return { playersUpdated: stats.size };
 }

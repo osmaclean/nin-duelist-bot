@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, EmbedBuilder, Colors } from 'discord.js';
+import { ChatInputCommandInteraction, EmbedBuilder, Colors, GuildMemberRoleManager, TextChannel } from 'discord.js';
 import { DuelStatus } from '@prisma/client';
 import { getDuelById, cancelDuel, reopenDuel, forceExpireDuel, adminFixResult } from '../services/duel.service';
 import { reverseResult, applyResult } from '../services/player.service';
@@ -8,6 +8,7 @@ import {
   getSeasonPodium,
   adminEndSeason,
   adminCreateSeason,
+  repairSeasonStats,
 } from '../services/season.service';
 import { searchDuelsByPlayer, searchDuelsByStatus } from '../services/search.service';
 import { buildDuelEmbed } from '../lib/embeds';
@@ -21,6 +22,7 @@ import {
   notifyAdminForceExpire,
   notifyAdminFixResult,
 } from '../lib/notifications';
+import { sanitizeText, validateScore } from '../lib/validation';
 
 function hasAdminRole(interaction: ChatInputCommandInteraction): boolean {
   if (ADMIN_ROLE_IDS.length === 0) return false;
@@ -29,13 +31,13 @@ function hasAdminRole(interaction: ChatInputCommandInteraction): boolean {
   if (!roles) return false;
 
   // GuildMemberRoleManager (gateway interaction) has cache.has()
-  if ('cache' in roles && typeof (roles as any).cache?.has === 'function') {
-    return ADMIN_ROLE_IDS.some((id) => (roles as any).cache.has(id));
+  if ('cache' in roles && typeof (roles as GuildMemberRoleManager).cache?.has === 'function') {
+    return ADMIN_ROLE_IDS.some((id) => (roles as GuildMemberRoleManager).cache.has(id));
   }
 
   // API interaction: roles is string[]
   if (Array.isArray(roles)) {
-    return ADMIN_ROLE_IDS.some((id) => (roles as string[]).includes(id));
+    return ADMIN_ROLE_IDS.some((id) => roles.includes(id));
   }
 
   return false;
@@ -59,6 +61,8 @@ export async function handleAdminCommand(interaction: ChatInputCommandInteractio
         return handleSeasonEnd(interaction);
       case 'create':
         return handleSeasonCreate(interaction);
+      case 'repair':
+        return handleSeasonRepair(interaction);
     }
     return;
   }
@@ -97,7 +101,7 @@ async function updateOriginalEmbed(
   try {
     const channel = await interaction.client.channels.fetch(duel.channelId);
     if (channel && 'messages' in channel) {
-      const message = await (channel as any).messages.fetch(duel.messageId);
+      const message = await (channel as TextChannel).messages.fetch(duel.messageId);
       const embed = buildDuelEmbed(updated);
       await message.edit({ embeds: [embed], components: [] });
     }
@@ -110,7 +114,7 @@ async function updateOriginalEmbed(
 
 async function handleAdminCancel(interaction: ChatInputCommandInteraction) {
   const duelId = interaction.options.getInteger('duel_id', true);
-  const reason = interaction.options.getString('reason', true);
+  const reason = sanitizeText(interaction.options.getString('reason', true));
 
   await interaction.deferReply({ ephemeral: true });
 
@@ -161,7 +165,7 @@ async function handleAdminCancel(interaction: ChatInputCommandInteraction) {
 
 async function handleAdminReopen(interaction: ChatInputCommandInteraction) {
   const duelId = interaction.options.getInteger('duel_id', true);
-  const reason = interaction.options.getString('reason', true);
+  const reason = sanitizeText(interaction.options.getString('reason', true));
 
   await interaction.deferReply({ ephemeral: true });
 
@@ -220,7 +224,7 @@ async function handleAdminReopen(interaction: ChatInputCommandInteraction) {
 
 async function handleAdminForceExpire(interaction: ChatInputCommandInteraction) {
   const duelId = interaction.options.getInteger('duel_id', true);
-  const reason = interaction.options.getString('reason', true);
+  const reason = sanitizeText(interaction.options.getString('reason', true));
 
   await interaction.deferReply({ ephemeral: true });
 
@@ -273,7 +277,7 @@ async function handleAdminFixResult(interaction: ChatInputCommandInteraction) {
   const duelId = interaction.options.getInteger('duel_id', true);
   const winnerUser = interaction.options.getUser('winner', true);
   const score = interaction.options.getString('score', true);
-  const reason = interaction.options.getString('reason', true);
+  const reason = sanitizeText(interaction.options.getString('reason', true));
 
   await interaction.deferReply({ ephemeral: true });
 
@@ -303,11 +307,17 @@ async function handleAdminFixResult(interaction: ChatInputCommandInteraction) {
 
   // Parse score (format: "2-1" or "1-0")
   const scoreParts = score.split('-').map(Number);
-  if (scoreParts.length !== 2 || scoreParts.some(isNaN) || scoreParts[0] < 0 || scoreParts[1] < 0) {
+  if (scoreParts.length !== 2 || scoreParts.some(isNaN)) {
     await interaction.editReply('Placar inválido. Use o formato `W-L` (ex: `2-1`, `1-0`).');
     return;
   }
   const [scoreWinner, scoreLoser] = scoreParts;
+
+  if (!validateScore(duel.format, scoreWinner, scoreLoser)) {
+    const validScores = duel.format === 'MD1' ? '1-0' : '2-0 ou 2-1';
+    await interaction.editReply(`Placar inválido para ${duel.format}. Placares válidos: ${validScores}.`);
+    return;
+  }
 
   // Reverse old result, apply new result, update duel — all in one transaction
   const oldWinnerId = duel.winnerId;
@@ -325,7 +335,7 @@ async function handleAdminFixResult(interaction: ChatInputCommandInteraction) {
 
     // Update duel record
     return adminFixResult(duelId, newWinnerId, scoreWinner, scoreLoser, tx);
-  });
+  }, { timeout: 10_000 });
 
   if (!fixed) {
     await interaction.editReply(`Erro ao corrigir resultado do duelo #${duelId}.`);
@@ -450,7 +460,7 @@ async function handleSeasonEnd(interaction: ChatInputCommandInteraction) {
     (p) => `${medals[p.rank - 1]} <@${p.discordId}> — ${p.points}pts | ${p.wins}V ${p.losses}D | Peak: ${p.peakStreak}`,
   );
 
-  const seasonName = (season as any).name ? ` — ${(season as any).name}` : '';
+  const seasonName = season.name ? ` — ${season.name}` : '';
   const embed = new EmbedBuilder()
     .setTitle(`Season ${season.number}${seasonName} — Encerrada`)
     .setColor(Colors.Gold)
@@ -462,7 +472,7 @@ async function handleSeasonEnd(interaction: ChatInputCommandInteraction) {
   try {
     const channel = interaction.channel;
     if (channel && 'send' in channel) {
-      await (channel as any).send({ embeds: [embed] });
+      await (channel as TextChannel).send({ embeds: [embed] });
     }
   } catch {
     // Channel may not be available
@@ -571,4 +581,35 @@ async function handleSearchStatus(interaction: ChatInputCommandInteraction) {
   });
 
   await interaction.editReply(`**Duelos com status \`${status}\`** (${duels.length})\n\n${lines.join('\n')}`);
+}
+
+// ─── /admin season repair ──────────────────────────────────────
+
+async function handleSeasonRepair(interaction: ChatInputCommandInteraction) {
+  const seasonId = interaction.options.getInteger('season_id', true);
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const result = await repairSeasonStats(seasonId);
+
+  if (!result) {
+    await interaction.editReply(`Season #${seasonId} não encontrada.`);
+    return;
+  }
+
+  await logAdminAction({
+    action: 'REPAIR_SEASON',
+    adminDiscordId: interaction.user.id,
+    reason: `Recalculados stats de ${result.playersUpdated} jogadores na season #${seasonId}`,
+  });
+
+  logger.info('Admin reparou season', {
+    seasonId,
+    playersUpdated: result.playersUpdated,
+    adminId: interaction.user.id,
+  });
+
+  await interaction.editReply(
+    `Season #${seasonId} reparada.\n**Jogadores recalculados:** ${result.playersUpdated}`,
+  );
 }

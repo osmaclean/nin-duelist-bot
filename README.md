@@ -101,7 +101,7 @@ npm test
 npm run test:watch
 ```
 
-54 arquivos de teste, 367 testes. Co-localizados com o código fonte (`*.test.ts`), usando mocks do Vitest. Nenhuma dependência de banco real nos testes.
+55 arquivos de teste, 380 testes. Co-localizados com o código fonte (`*.test.ts`), usando mocks do Vitest. Nenhuma dependência de banco real nos testes.
 
 ### Lint e formatação
 
@@ -353,6 +353,19 @@ Encerra a season ativa manualmente.
 - Calcula automaticamente o pódio (top 3) pelo ranking
 - Define o campeão (top 1) na season
 - Envia embed público com pódio no canal
+
+---
+
+#### `/admin season repair season_id`
+
+Recalcula todos os stats de `PlayerSeason` (pontos, V/D, streak, peakStreak) a partir dos duelos confirmados.
+
+**Parâmetros:**
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `season_id` | Inteiro | ID da season a reparar |
+
+**Uso:** Recuperação de dados após inconsistência. Útil se stats foram corrompidos por bug ou intervenção manual no banco.
 
 ---
 
@@ -612,7 +625,7 @@ src/
 ├── modals/            # Modal handlers (submit-score)
 │   └── index.ts       # Barrel — mapa action → handler
 ├── services/          # Logica de negocio (duel, player, ranking, season, antifarm, pending, history, profile, h2h, activity, records, audit, search)
-├── lib/               # Utilitarios (embeds, components, logger, prisma, pagination, notifications, cooldown, retry, job-health, ops-webhook, notification-metrics, health-server)
+├── lib/               # Utilitarios (embeds, components, logger, prisma, pagination, notifications, cooldown, retry, job-health, ops-webhook, notification-metrics, health-server, validation)
 ├── events/            # Event handlers Discord (ready, interactionCreate)
 ├── jobs/              # Background jobs (expire-duels, season-check)
 ├── config.ts          # Constantes e validação de env vars
