@@ -38,6 +38,14 @@ vi.mock('../config', () => ({
   NOTIFICATION_COOLDOWN_MS: 300000,
 }));
 
+vi.mock('./notification-metrics', () => ({
+  trackDmSent: vi.fn(),
+  trackDmFailed: vi.fn(),
+  trackChannelFallbackSent: vi.fn(),
+  trackChannelFallbackFailed: vi.fn(),
+  trackThrottled: vi.fn(),
+}));
+
 function makeDuel(overrides: Record<string, unknown> = {}) {
   return {
     id: 10,

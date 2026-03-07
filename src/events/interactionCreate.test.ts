@@ -3,7 +3,7 @@ import { registerInteractionEvent } from './interactionCreate';
 import { commandHandlers } from '../commands';
 import { buttonHandlers } from '../buttons';
 import { modalHandlers } from '../modals';
-import { handleRankPagination } from '../lib/pagination';
+import { handleRankPagination, handleHistoryPagination } from '../lib/pagination';
 
 vi.mock('../commands', () => ({
   commandHandlers: {
@@ -28,7 +28,10 @@ vi.mock('../modals', () => ({
     'submit-score': vi.fn(),
   },
 }));
-vi.mock('../lib/pagination', () => ({ handleRankPagination: vi.fn() }));
+vi.mock('../lib/pagination', () => ({
+  handleRankPagination: vi.fn(),
+  handleHistoryPagination: vi.fn(),
+}));
 vi.mock('../lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -47,6 +50,7 @@ const handleSubmitScoreModal = modalHandlers['submit-score'];
 
 function createBaseInteraction(extra: Record<string, unknown> = {}) {
   return {
+    id: 'interaction-123',
     isChatInputCommand: () => false,
     isButton: () => false,
     isModalSubmit: () => false,
@@ -126,6 +130,21 @@ describe('events/interactionCreate', () => {
 
     expect(handleRankPagination).toHaveBeenCalledWith(interaction);
     expect(handleAcceptDuel).not.toHaveBeenCalled();
+  });
+
+  it('should route hist: buttons to history pagination handler', async () => {
+    const on = vi.fn();
+    registerInteractionEvent({ on } as any);
+    const callback = on.mock.calls[0][1];
+    const interaction = createBaseInteraction({
+      isButton: () => true,
+      customId: 'hist:u1:2:_:_:_',
+    });
+
+    await callback(interaction);
+
+    expect(handleHistoryPagination).toHaveBeenCalledWith(interaction);
+    expect(handleRankPagination).not.toHaveBeenCalled();
   });
 
   it('should route duel buttons to matching handler', async () => {

@@ -4,6 +4,13 @@ import { logger } from './logger';
 import { prisma } from './prisma';
 import { checkCooldown } from './cooldown';
 import { NOTIFICATION_COOLDOWN_MS } from '../config';
+import {
+  trackDmSent,
+  trackDmFailed,
+  trackChannelFallbackSent,
+  trackChannelFallbackFailed,
+  trackThrottled,
+} from './notification-metrics';
 
 /**
  * Checks if a user has DMs enabled. Returns true if player not found (new player, default on).
@@ -34,8 +41,10 @@ async function sendDmWithFallback(
     try {
       const user = await client.users.fetch(discordId);
       await user.send(message);
+      trackDmSent();
       return;
     } catch {
+      trackDmFailed();
       logger.warn('Falha ao enviar DM, tentando fallback no canal', { duelId, discordId });
     }
   }
@@ -46,8 +55,10 @@ async function sendDmWithFallback(
       const channel = await client.channels.fetch(channelId);
       if (channel && 'send' in channel) {
         await (channel as any).send(`<@${discordId}> — ${message}`);
+        trackChannelFallbackSent();
       }
     } catch {
+      trackChannelFallbackFailed();
       logger.error('Falha no fallback de notificação no canal', { duelId, channelId });
     }
   }
@@ -66,6 +77,7 @@ async function sendWithCooldown(
 ): Promise<boolean> {
   const key = `notif:${discordId}:${eventType}`;
   if (!checkCooldown(key, NOTIFICATION_COOLDOWN_MS)) {
+    trackThrottled();
     logger.info('Notificação throttled por cooldown', { duelId, discordId, eventType });
     return false;
   }
