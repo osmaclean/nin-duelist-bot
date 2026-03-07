@@ -50,7 +50,6 @@ function mockDuel(status: string, extra: Record<string, unknown> = {}) {
     witnessId: 3,
     seasonId: 10,
     opponentAccepted: false,
-    witnessAccepted: false,
     ...extra,
   };
 }

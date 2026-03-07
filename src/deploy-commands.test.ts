@@ -65,10 +65,18 @@ class FakeSlashCommandBuilder {
     this.data.max = max;
     return this;
   }
+  setDefaultMemberPermissions(_permissions: bigint) {
+    this.data.default_member_permissions = String(_permissions);
+    return this;
+  }
   toJSON() {
     return this.data;
   }
 }
+
+const MockPermissionFlagsBits = {
+  Administrator: 1n << 3n,
+};
 
 describe('deploy-commands', () => {
   it('should deploy guild commands when DISCORD_GUILD_ID is set', async () => {
@@ -85,6 +93,7 @@ describe('deploy-commands', () => {
       REST,
       Routes,
       SlashCommandBuilder: FakeSlashCommandBuilder,
+      PermissionFlagsBits: MockPermissionFlagsBits,
     }));
     vi.doMock('./config', () => ({
       DISCORD_TOKEN: 'token',
@@ -134,6 +143,7 @@ describe('deploy-commands', () => {
       REST,
       Routes,
       SlashCommandBuilder: FakeSlashCommandBuilder,
+      PermissionFlagsBits: MockPermissionFlagsBits,
     }));
     vi.doMock('./config', () => ({
       DISCORD_TOKEN: 'token',
@@ -164,6 +174,7 @@ describe('deploy-commands', () => {
       REST,
       Routes,
       SlashCommandBuilder: FakeSlashCommandBuilder,
+      PermissionFlagsBits: MockPermissionFlagsBits,
     }));
     vi.doMock('./config', () => ({
       DISCORD_TOKEN: 'token',
