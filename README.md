@@ -1,5 +1,8 @@
 # NinDuelist
 
+<!-- Update OWNER below with your GitHub username/org -->
+![CI](https://github.com/osmaclean/nin-duelist-bot/actions/workflows/ci.yml/badge.svg?branch=main)
+
 Bot Discord para sistema de duelos ranqueados do **Nin Online**. Gerencia desafios entre jogadores com testemunha obrigatória, seasons automáticas, ranking e anti-farm.
 
 ---
@@ -24,7 +27,7 @@ Bot Discord para sistema de duelos ranqueados do **Nin Online**. Gerencia desafi
 
 ```bash
 git clone <repo-url>
-cd NinDuelist
+cd nin-duelist-bot
 npm install
 ```
 
@@ -40,9 +43,11 @@ cp .env.example .env
 |---|---|---|
 | `DISCORD_TOKEN` | Sim | Token do bot Discord |
 | `DISCORD_CLIENT_ID` | Sim | Application ID do bot |
-| `DISCORD_GUILD_ID` | Nao | Restringe commands a uma guild (dev) |
+| `DISCORD_GUILD_ID` | Não | Restringe commands a uma guild (dev) |
 | `DATABASE_URL` | Sim | Connection string PostgreSQL |
 | `ADMIN_ROLE_IDS` | Não | IDs de cargos admin separados por vírgula |
+| `OPS_WEBHOOK_URL` | Não | Webhook Discord para alertas de ops (canal privado) |
+| `HEALTH_PORT` | Não | Porta do health server HTTP (padrão: 8080) |
 
 O bot valida todas as variáveis obrigatórias no startup e falha com mensagem clara se alguma estiver faltando.
 
@@ -96,7 +101,7 @@ npm test
 npm run test:watch
 ```
 
-50 arquivos de teste, 339 testes. Co-localizados com o código fonte (`*.test.ts`), usando mocks do Vitest. Nenhuma dependência de banco real nos testes.
+54 arquivos de teste, 367 testes. Co-localizados com o código fonte (`*.test.ts`), usando mocks do Vitest. Nenhuma dependência de banco real nos testes.
 
 ### Lint e formatação
 
@@ -112,7 +117,7 @@ npm run format:check
 
 ### CI/CD
 
-- **GitHub Actions** (`ci.yml`) — Roda lint, typecheck (`tsc --noEmit`) e testes em todo push/PR para `main`
+- **GitHub Actions** (`ci.yml`) — Roda lint, typecheck (`tsc --noEmit`) e testes com cobertura (thresholds: 80% lines/functions, 70% branches) em todo push/PR para `main`
 - **Branch protection** — PRs obrigatórios, CI deve passar, squash merge only, force push bloqueado
 - **Deploy** — Railway faz deploy automático após merge na `main`
 
@@ -132,9 +137,14 @@ npm run format:check
 
 ### Comandos
 
-#### `/pending`
+#### `/pending [limit]`
 
 Mostra duelos que precisam de ação sua. Resposta ephemeral (só você vê).
+
+**Parâmetros:**
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `limit` | Inteiro (opcional) | Máximo de duelos a exibir (1-50) |
 
 **Exibição:**
 - Duelos ordenados por urgência:
@@ -147,18 +157,24 @@ Mostra duelos que precisam de ação sua. Resposta ephemeral (só você vê).
 
 ---
 
-#### `/history [@jogador]`
+#### `/history [@jogador] [vs] [from] [to] [page]`
 
-Exibe histórico de duelos e estatísticas na season atual.
+Exibe histórico de duelos e estatísticas na season atual, com filtros opcionais e paginação.
 
 **Parâmetros:**
 | Parâmetro | Tipo | Descrição |
 |---|---|---|
 | `player` | Usuário (opcional) | Jogador para consultar (padrão: você) |
+| `vs` | Usuário (opcional) | Filtrar duelos contra este oponente |
+| `from` | Texto (opcional) | Data inicial no formato `YYYY-MM-DD` |
+| `to` | Texto (opcional) | Data final no formato `YYYY-MM-DD` |
+| `page` | Inteiro (opcional) | Página do histórico (10 duelos por página) |
 
 **Exibição:**
 - Estatísticas: pontos, vitórias, derrotas, win rate, streak atual, melhor streak
-- Últimos 10 duelos confirmados: resultado (V/D), placar, data, oponente
+- Duelos confirmados paginados (10 por página): resultado (V/D), placar, data, oponente
+- Filtros ativos exibidos no embed
+- Botões **Anterior** / **Próxima** para navegar entre páginas quando há mais de 10 duelos
 
 ---
 
@@ -213,6 +229,17 @@ Exibe os recordes da season atual.
 - **Maior Streak** — Jogador com maior sequência de vitórias consecutivas
 - **Melhor Win Rate** — Jogador com maior taxa de vitória (mínimo 5 jogos)
 - **Mais Duelos** — Jogador com mais duelos jogados
+
+---
+
+#### `/season`
+
+Exibe o status da season atual. Resposta ephemeral.
+
+**Exibição:**
+- Nome e número da season, datas de início/término, dias restantes
+- Total de duelos e jogadores ativos
+- Top 3 parcial com pontos e V/D
 
 ---
 
@@ -577,7 +604,7 @@ O bot envia DMs automáticas nos eventos importantes do duelo. Se a DM falhar (p
 
 ```
 src/
-├── commands/          # Slash commands (/duel, /rank, /mvp, /pending, /history, /profile, /h2h, /activity, /records, /settings, /admin)
+├── commands/          # Slash commands (/duel, /rank, /mvp, /pending, /history, /profile, /h2h, /activity, /records, /season, /settings, /admin)
 │   └── index.ts       # Barrel — mapa command → handler
 ├── buttons/           # Button handlers (aceitar, iniciar, cancelar, etc.)
 │   ├── handler.ts     # HOF que elimina boilerplate dos handlers
@@ -585,7 +612,7 @@ src/
 ├── modals/            # Modal handlers (submit-score)
 │   └── index.ts       # Barrel — mapa action → handler
 ├── services/          # Logica de negocio (duel, player, ranking, season, antifarm, pending, history, profile, h2h, activity, records, audit, search)
-├── lib/               # Utilitarios (embeds, components, logger, prisma, pagination, notifications, cooldown, retry, job-health)
+├── lib/               # Utilitarios (embeds, components, logger, prisma, pagination, notifications, cooldown, retry, job-health, ops-webhook, notification-metrics, health-server)
 ├── events/            # Event handlers Discord (ready, interactionCreate)
 ├── jobs/              # Background jobs (expire-duels, season-check)
 ├── config.ts          # Constantes e validação de env vars
@@ -606,7 +633,10 @@ src/
 - **Cooldown in-memory** — Map genérico key-based para rate limiting. Usado no `/duel` (30s) e nos botões (5s). Aceita perda no restart.
 - **Job health check** — Registro in-memory do último ciclo bem-sucedido por job. Log de warning se gap entre ciclos excede 2x o intervalo esperado.
 - **Reconcile de embeds no startup** — `reconcileStaleEmbeds()` limpa botões de duelos terminais das últimas 24h ao iniciar, evitando embeds desatualizados.
-- **Logging estruturado** — JSON com timestamp, level e context. Sem dependência externa.
+- **Logging estruturado** — JSON com timestamp, level e context. Sem dependência externa. Correlação por `requestId` (interaction ID do Discord) em todas as interações.
+- **Health server HTTP** — Endpoint `/health` retorna status do bot (connected/disconnected), saúde dos jobs (gap detection), uptime e métricas de notificações. Responde `200 ok` ou `503 degraded`. Configurável via `HEALTH_PORT`.
+- **Alertas ops via webhook** — Alertas de falhas críticas (jobs falhando, season não rotacionada) enviados para canal privado do Discord via `OPS_WEBHOOK_URL`. Dedup automático: alerta enviado uma única vez por incidente até recuperação.
+- **Métricas de notificações** — Contadores in-memory de DM enviadas/falhas, fallbacks, throttled. Expostos no `/health`. Aceita perda no restart.
 
 ---
 
@@ -622,10 +652,13 @@ Constantes configuráveis em `src/config.ts`:
 | `EXPIRE_CHECK_INTERVAL_MS` | 1 min | Intervalo do job de expiração |
 | `SEASON_CHECK_INTERVAL_MS` | 5 min | Intervalo do job de verificação de season |
 | `RANK_PAGE_SIZE` | 20 | Jogadores por página no ranking |
+| `HISTORY_PAGE_SIZE` | 10 | Duelos por página no histórico |
 | `DUEL_COOLDOWN_MS` | 30 seg | Cooldown entre criações de duelo por usuário |
 | `BUTTON_COOLDOWN_MS` | 5 seg | Debounce em botões de ação |
 | `NOTIFICATION_COOLDOWN_MS` | 5 min | Cooldown de notificação por usuário por evento |
 | `SEASON_ENDING_WARNING_MS` | 24h | Tempo antes do fim da season para enviar aviso |
+| `HEALTH_PORT` | 8080 | Porta do servidor HTTP de health check |
+| `OPS_WEBHOOK_URL` | — | Webhook Discord para alertas de operação (opcional) |
 | `POINTS_WIN` | +1 | Pontos por vitória |
 | `POINTS_LOSS` | -1 | Pontos por derrota |
 
