@@ -66,7 +66,7 @@ export function buildRankEmbed(
 ) {
   const lines = entries.map((e, i) => {
     const rank = startRank + i;
-    const medal = rank <= 3 ? ['', '', ''][rank - 1] : `**${rank}.**`;
+    const medal = rank <= 3 ? ['\u{1F947}', '\u{1F948}', '\u{1F949}'][rank - 1] : `**${rank}.**`;
     return `${medal} <@${e.player.discordId}> — ${e.points}pts | ${e.wins}V ${e.losses}D | Streak: ${e.streak} (max ${e.peakStreak})`;
   });
 
@@ -82,7 +82,7 @@ export function buildMvpEmbed(
   entries: Array<{ player: Player; points: number; wins: number; losses: number; streak: number; peakStreak: number }>,
 ) {
   const lines = entries.map((e, i) => {
-    const medal = ['', '', '', '4.', '5.'][i] ?? `${i + 1}.`;
+    const medal = ['\u{1F947}', '\u{1F948}', '\u{1F949}', '4.', '5.'][i] ?? `${i + 1}.`;
     return `${medal} <@${e.player.discordId}> — ${e.points}pts | ${e.wins}V ${e.losses}D | Peak Streak: ${e.peakStreak}`;
   });
 

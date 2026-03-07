@@ -2,6 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../lib/prisma';
 import { getPendingDuels } from './pending.service';
 
+vi.mock('../config', () => ({
+  DUEL_EXPIRY_MS: 30 * 60 * 1000,
+  POINTS_WIN: 1,
+  POINTS_LOSS: -1,
+  DISCORD_TOKEN: 'test-token',
+  DISCORD_CLIENT_ID: 'test-client-id',
+}));
+
 vi.mock('../lib/prisma', () => ({
   prisma: {
     player: {
@@ -21,7 +29,6 @@ function makeDuel(overrides: Record<string, unknown> = {}) {
     opponentId: 2,
     witnessId: 3,
     opponentAccepted: false,
-    witnessAccepted: false,
     createdAt: new Date(),
     challenger: { discordId: 'u1' },
     opponent: { discordId: 'u2' },
@@ -88,6 +95,16 @@ describe('pending.service', () => {
     const result = await getPendingDuels('u2', 1);
 
     expect(result[0].urgency).toBe(0);
+  });
+
+  it('should assign urgency 4 for witness in PROPOSED (witness no longer needs to accept)', async () => {
+    (prisma.player.findUnique as any).mockResolvedValue({ id: 3 });
+    (prisma.duel.findMany as any).mockResolvedValue([makeDuel({ witnessId: 3 })]);
+
+    const result = await getPendingDuels('u3', 1);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].urgency).toBe(4);
   });
 
   it('should assign urgency 3 for ACCEPTED duels', async () => {
