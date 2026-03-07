@@ -5,7 +5,6 @@ type DuelInfo = {
   id: number;
   status: DuelStatus;
   opponentAccepted: boolean;
-  witnessAccepted: boolean;
 };
 
 export function buildDuelComponents(duel: DuelInfo): ActionRowBuilder<ButtonBuilder>[] {

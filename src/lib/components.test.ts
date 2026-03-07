@@ -6,7 +6,6 @@ function duel(status: string, extra: Record<string, unknown> = {}) {
     id: 1,
     status,
     opponentAccepted: false,
-    witnessAccepted: false,
     ...extra,
   } as any;
 }
@@ -58,7 +57,6 @@ describe('lib/components', () => {
       id: 42,
       status: 'ACCEPTED',
       opponentAccepted: true,
-      witnessAccepted: true,
     } as any);
     const customIds = result.flatMap((row: any) => row.components.map((b: any) => b.data.custom_id));
     expect(customIds).toEqual(['start-duel:42', 'cancel-duel:42']);

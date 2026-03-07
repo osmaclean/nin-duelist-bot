@@ -100,7 +100,7 @@ export async function confirmAndApplyResult(duelId: number) {
     }
 
     return confirmed;
-  });
+  }, { timeout: 10_000 });
 }
 
 export async function rejectResult(duelId: number) {

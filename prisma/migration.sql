@@ -59,7 +59,7 @@ CREATE TABLE "Duel" (
   "format" "DuelFormat" NOT NULL,
   "challengerId" INTEGER NOT NULL,
   "opponentId" INTEGER NOT NULL,
-  "witnessId" INTEGER,
+  "witnessId" INTEGER NOT NULL,
   "seasonId" INTEGER NOT NULL,
   "winnerId" INTEGER,
   "scoreWinner" INTEGER,
@@ -72,7 +72,7 @@ CREATE TABLE "Duel" (
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "Duel_challengerId_fkey" FOREIGN KEY ("challengerId") REFERENCES "Player"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT "Duel_opponentId_fkey" FOREIGN KEY ("opponentId") REFERENCES "Player"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT "Duel_witnessId_fkey" FOREIGN KEY ("witnessId") REFERENCES "Player"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT "Duel_witnessId_fkey" FOREIGN KEY ("witnessId") REFERENCES "Player"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT "Duel_seasonId_fkey" FOREIGN KEY ("seasonId") REFERENCES "Season"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT "Duel_winnerId_fkey" FOREIGN KEY ("winnerId") REFERENCES "Player"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );

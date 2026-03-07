@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { DUEL_INCLUDE, DuelWithPlayers } from './duel.service';
 import { HISTORY_PAGE_SIZE } from '../config';
@@ -41,7 +42,7 @@ export async function getPlayerHistory(
     ? await prisma.player.findUnique({ where: { discordId: filters.vsDiscordId } })
     : null;
 
-  const duelWhere: any = {
+  const duelWhere: Prisma.DuelWhereInput = {
     seasonId,
     status: 'CONFIRMED' as const,
     OR: [{ challengerId: player.id }, { opponentId: player.id }],
