@@ -450,6 +450,19 @@ Encerra a season ativa manualmente. Cancela duelos nao-finalizados, calcula podi
 
 ---
 
+#### `/admin season repair season_id`
+
+Recalcula todos os stats de `PlayerSeason` (pontos, V/D, streak, peakStreak) a partir dos duelos confirmados.
+
+**Parâmetros:**
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `season_id` | Inteiro | ID da season a reparar |
+
+**Uso:** Recuperação de dados após inconsistência. Útil se stats foram corrompidos por bug ou intervenção manual no banco.
+
+---
+
 #### `/admin season create [name] [duration]`
 
 Cria uma nova season. Nao pode haver outra season ativa.
