@@ -1,27 +1,116 @@
 # NinDuelist
 
-<!-- Update OWNER below with your GitHub username/org -->
 ![CI](https://github.com/osmaclean/nin-duelist-bot/actions/workflows/ci.yml/badge.svg?branch=main)
 
-Bot Discord para sistema de duelos ranqueados do **Nin Online**. Gerencia desafios entre jogadores com testemunha obrigatória, seasons automáticas, ranking e anti-farm.
+Bot Discord para sistema de duelos ranqueados do **Nin Online**. Gerencia desafios entre jogadores com testemunha obrigatoria, seasons automaticas, ranking e anti-farm.
 
 ---
 
-## Stack
+## Introducao
 
-| Tecnologia | Uso |
-|---|---|
-| **Node.js 20** | Runtime |
-| **TypeScript** | Linguagem (strict mode) |
-| **Discord.js 14** | Integração Discord |
-| **Prisma** | ORM + migrations |
-| **PostgreSQL** | Banco de dados (Supabase) |
-| **Vitest** | Testes unitários |
-| **Docker** | Deploy (Alpine) |
+### O que e o NinDuelist
+
+Bot Discord para gerenciar duelos ranqueados no Nin Online. Jogadores usam slash commands para desafiar oponentes. Cada duelo exige uma testemunha obrigatoria que valida o resultado. A pontuacao e simples: +1 ponto por vitoria, -1 por derrota. Os duelos acontecem dentro de um embed unico atualizado continuamente com botoes dinamicos.
+
+### Registro de jogadores
+
+Nao existe comando de registro. Jogadores sao cadastrados automaticamente na primeira vez que participam de um duelo (como desafiante, oponente ou testemunha). O username do Discord e mantido atualizado a cada interacao.
+
+---
+
+## Features
+
+### Core
+
+| Feature | Descricao |
+|---------|-----------|
+| **Desafios 1v1** | Duelos no formato MD1 (Melhor de 1) ou MD3 (Melhor de 3) com testemunha obrigatoria |
+| **Pontuacao** | +1 ponto por vitoria, -1 por derrota. Streak atual e peak streak rastreados |
+| **Seasons automaticas** | Temporadas de 30 dias com criacao e fechamento automaticos. Campeao definido pelo ranking |
+| **Testemunha obrigatoria** | Terceiro jogador que valida o resultado. Pode confirmar ou rejeitar com um clique |
+| **Anti-farm** | Mesmo par de jogadores so pode ter 1 duelo confirmado por dia (UTC) |
+| **Embed unico** | Cada duelo tem um embed persistente atualizado dinamicamente com botoes conforme o estado |
+
+### Consulta e estatisticas
+
+| Feature | Descricao |
+|---------|-----------|
+| **Ranking** | Ranking paginado com 20 jogadores por pagina |
+| **Perfil** | Posicao no ranking, pontos, vitorias, derrotas, win rate, streaks, seasons jogadas |
+| **Historico** | Duelos confirmados paginados com filtros (oponente, datas) |
+| **Head-to-head** | Confronto direto entre dois jogadores na season atual |
+| **Atividade** | Top 10 jogadores mais ativos por total de duelos |
+| **Recordes** | Maior streak, melhor win rate (minimo 5 jogos), mais duelos |
+| **MVP** | Top 3 jogadores da season com destaque para Peak Streak |
+| **Season** | Status da season atual com top 3 parcial |
+
+### Admin
+
+| Feature | Descricao |
+|---------|-----------|
+| **Cancelar duelos** | Cancelamento forcado com motivo e notificacao |
+| **Reabrir duelos** | Reabre duelo terminal para IN_PROGRESS (reverte stats se CONFIRMED) |
+| **Forcar expiracao** | Expira duelo nao-terminal |
+| **Corrigir resultado** | Corrige resultado com recalculo atomico de pontos |
+| **Reparar season** | Recalcula stats de PlayerSeason a partir dos duelos confirmados |
+| **Audit log** | Historico persistente de todas as acoes admin |
+| **Busca** | Buscar duelos por jogador ou por status |
+| **Gestao de season** | Criar, encerrar e consultar seasons |
+| **Visibilidade** | Comandos admin ocultos para quem nao e admin (`Administrator` permission) |
+
+### Notificacoes
+
+DMs automaticas em eventos do ciclo de vida do duelo. Se a DM falhar ou o jogador tiver desativado DMs via `/settings`, faz fallback com mencao no canal do duelo. Notificacoes nunca bloqueiam o fluxo principal (fire-and-forget).
+
+**Anti-spam:** Cooldown de 5 minutos por usuario por tipo de evento. Notificacoes repetidas dentro desse periodo sao suprimidas.
+
+**Opt-out:** Jogadores podem desativar DMs com `/settings notifications off`.
+
+| Evento | Quem recebe |
+|--------|-------------|
+| Duelo criado | Oponente + testemunha |
+| Oponente aceitou (ACCEPTED) | Ambos duelistas |
+| Resultado enviado | Testemunha |
+| Resultado confirmado | Ambos duelistas |
+| Resultado rejeitado | Ambos duelistas |
+| Duelo expirando (10 min restantes) | Oponente + testemunha |
+| Duelo expirado | Todos (3 participantes) |
+| Admin cancelou duelo | Ambos duelistas |
+| Admin reabriu duelo | Ambos duelistas |
+| Admin forcou expiracao | Ambos duelistas |
+| Admin corrigiu resultado | Ambos duelistas |
+| Season encerrando (24h) | Todos os jogadores ativos da season |
+
+### Observabilidade
+
+| Feature | Descricao |
+|---------|-----------|
+| **Health server** | Endpoint HTTP `/health` — status do bot, saude dos jobs, uptime, metricas de notificacoes. Responde `200 ok` ou `503 degraded` |
+| **Alertas ops** | Webhook Discord para canal privado — alertas de falhas criticas de jobs. Dedup automatico (1 alerta por incidente ate recovery) |
+| **Metricas de notificacoes** | Contadores in-memory: DM sent/failed, fallback sent/failed, throttled. Expostos no `/health` |
+| **Logging estruturado** | JSON com timestamp, level e context. Correlacao por `requestId` (interaction ID) em todas as interacoes |
+
+### Hardening
+
+| Feature | Descricao |
+|---------|-----------|
+| **Input sanitization** | `sanitizeText` neutraliza @everyone/@here injection em inputs de texto |
+| **Score validation** | `validateScore` centraliza validacao de placar por formato (MD1: 1-0, MD3: 2-0 ou 2-1) |
+| **Transaction timeout** | Timeout explicito (10s) em todas as `$transaction` do Prisma |
+| **DB constraints** | CHECK para integridade de placar, CHECK para winnerId, indice unico parcial para season ativa |
+| **Optimistic locking** | Todas as transicoes de estado usam `updateMany` com filtro de status |
+| **Transacao atomica** | `confirmAndApplyResult` encapsula confirmacao + stats numa unica transacao |
 
 ---
 
 ## Setup
+
+### Pre-requisitos
+
+- **Node.js 20** ou superior
+- **PostgreSQL** (recomendado: Supabase)
+- **Aplicacao Discord** criada no Developer Portal
+- **Git**
 
 ### 1. Clonar e instalar
 
@@ -31,37 +120,32 @@ cd nin-duelist-bot
 npm install
 ```
 
-### 2. Configurar variáveis de ambiente
-
-Copie o `.env.example` e preencha:
+### 2. Configurar variaveis de ambiente
 
 ```bash
 cp .env.example .env
 ```
 
-| Variável | Obrigatória | Descrição |
-|---|---|---|
-| `DISCORD_TOKEN` | Sim | Token do bot Discord |
-| `DISCORD_CLIENT_ID` | Sim | Application ID do bot |
-| `DISCORD_GUILD_ID` | Não | Restringe commands a uma guild (dev) |
-| `DATABASE_URL` | Sim | Connection string PostgreSQL |
-| `ADMIN_ROLE_IDS` | Não | IDs de cargos admin separados por vírgula |
-| `OPS_WEBHOOK_URL` | Não | Webhook Discord para alertas de ops (canal privado) |
-| `HEALTH_PORT` | Não | Porta do health server HTTP (padrão: 8080) |
+Preencha as variaveis conforme a tabela na secao [Configuracao](#configuracao).
 
-O bot valida todas as variáveis obrigatórias no startup e falha com mensagem clara se alguma estiver faltando.
+O bot valida todas as variaveis obrigatorias no startup e falha com mensagem clara se alguma estiver faltando.
 
 ### 3. Banco de dados
 
-```bash
-# Gerar o client Prisma
-npm run generate
+**Desenvolvimento local:**
 
-# Aplicar migrations (dev local)
-npm run migrate
+```bash
+npm run generate   # Gera o client Prisma
+npm run migrate    # Aplica migrations
 ```
 
-Para Supabase com PgBouncer, rode o SQL de `prisma/migration.sql` diretamente no SQL Editor.
+**Supabase com PgBouncer:**
+
+Rode os arquivos SQL diretamente no SQL Editor, **nesta ordem:**
+
+1. `prisma/migration.sql` — schema inicial
+2. `prisma/migration_phase5.sql` — colunas de notificacao e season
+3. `prisma/migration_phase8.sql` — constraints, indices e limpeza
 
 ### 4. Registrar slash commands
 
@@ -69,7 +153,7 @@ Para Supabase com PgBouncer, rode o SQL de `prisma/migration.sql` diretamente no
 npm run deploy-commands
 ```
 
-Se `DISCORD_GUILD_ID` estiver definido, registra na guild (instantâneo). Senão, registra globalmente (pode levar até 1h para propagar).
+Se `DISCORD_GUILD_ID` estiver definido, registra na guild (instantaneo). Senao, registra globalmente (pode levar ate 1h para propagar).
 
 ### 5. Rodar
 
@@ -77,7 +161,7 @@ Se `DISCORD_GUILD_ID` estiver definido, registra na guild (instantâneo). Senão
 # Desenvolvimento
 npm run dev
 
-# Produção
+# Producao
 npm run build
 npm start
 ```
@@ -91,90 +175,130 @@ docker run --env-file .env ninduelist
 
 ---
 
-## Testes
+## Configuracao
 
-```bash
-# Rodar todos os testes
-npm test
+### Variaveis de ambiente
 
-# Modo watch
-npm run test:watch
-```
+| Variavel | Obrigatoria | Descricao |
+|----------|-------------|-----------|
+| `DISCORD_TOKEN` | Sim | Token do bot Discord |
+| `DISCORD_CLIENT_ID` | Sim | Application ID do bot |
+| `DISCORD_GUILD_ID` | Nao | Restringe commands a uma guild (dev) |
+| `DATABASE_URL` | Sim | Connection string PostgreSQL |
+| `ADMIN_ROLE_IDS` | Nao | IDs de cargos admin separados por virgula |
+| `OPS_WEBHOOK_URL` | Nao | Webhook Discord para alertas de ops (canal privado) |
+| `HEALTH_PORT` | Nao | Porta do health server HTTP (padrao: 8080) |
 
-55 arquivos de teste, 380 testes. Co-localizados com o código fonte (`*.test.ts`), usando mocks do Vitest. Nenhuma dependência de banco real nos testes.
+### Constantes (`src/config.ts`)
 
-### Lint e formatação
-
-```bash
-# Lint (ESLint com typescript-eslint)
-npm run lint
-npm run lint:fix
-
-# Formatação (Prettier)
-npm run format
-npm run format:check
-```
-
-### CI/CD
-
-- **GitHub Actions** (`ci.yml`) — Roda lint, typecheck (`tsc --noEmit`) e testes com cobertura (thresholds: 80% lines/functions, 70% branches) em todo push/PR para `main`
-- **Branch protection** — PRs obrigatórios, CI deve passar, squash merge only, force push bloqueado
-- **Deploy** — Railway faz deploy automático após merge na `main`
-
----
-
-## Tutorial Completo
-
-### Conceitos
-
-- **Season** — Temporada de 30 dias. Criada e fechada automaticamente. Ao fechar, o jogador com mais pontos vira campeão e uma nova season começa imediatamente.
-- **Duelo** — Partida entre dois jogadores com uma testemunha obrigatória. Passa por uma máquina de estados até ser confirmado.
-- **Testemunha** — Terceiro jogador que valida o resultado. Obrigatória em todos os duelos.
-- **Ranking** — Placar da season atual. +1 ponto por vitória, -1 por derrota.
-- **Anti-farm** — O mesmo par de jogadores só pode ter 1 duelo confirmado por dia (UTC).
+| Constante | Valor | Descricao |
+|-----------|-------|-----------|
+| `SEASON_DURATION_DAYS` | 30 | Duracao de uma season em dias |
+| `DUEL_EXPIRY_MS` | 30 min | Tempo para aceitar antes de expirar |
+| `EXPIRY_WARNING_MS` | 10 min | Tempo antes da expiracao para enviar aviso |
+| `EXPIRE_CHECK_INTERVAL_MS` | 1 min | Intervalo do job de expiracao |
+| `SEASON_CHECK_INTERVAL_MS` | 5 min | Intervalo do job de verificacao de season |
+| `RANK_PAGE_SIZE` | 20 | Jogadores por pagina no ranking |
+| `HISTORY_PAGE_SIZE` | 10 | Duelos por pagina no historico |
+| `DUEL_COOLDOWN_MS` | 30 seg | Cooldown entre criacoes de duelo por usuario |
+| `BUTTON_COOLDOWN_MS` | 5 seg | Debounce em botoes de acao |
+| `NOTIFICATION_COOLDOWN_MS` | 5 min | Cooldown de notificacao por usuario por evento |
+| `SEASON_ENDING_WARNING_MS` | 24h | Tempo antes do fim da season para enviar aviso |
+| `HEALTH_PORT` | 8080 | Porta do servidor HTTP de health check |
+| `OPS_WEBHOOK_URL` | — | Webhook Discord para alertas de operacao (opcional) |
+| `POINTS_WIN` | +1 | Pontos por vitoria |
+| `POINTS_LOSS` | -1 | Pontos por derrota |
 
 ---
 
-### Comandos
+## Comandos
+
+### Comandos de usuario
+
+#### `/duel @oponente formato @testemunha`
+
+Desafia um jogador para um duelo ranqueado.
+
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `opponent` | Usuario (obrigatorio) | Quem voce quer desafiar |
+| `format` | Escolha (obrigatorio) | `MD1 (Melhor de 1)` ou `MD3 (Melhor de 3)` |
+| `witness` | Usuario (obrigatorio) | Testemunha obrigatoria |
+
+**Validacoes:**
+- Deve existir uma season ativa
+- Nao pode duelar contra si mesmo
+- Oponente e testemunha nao podem ser bots
+- Testemunha nao pode ser um dos duelistas
+- Nenhum dos duelistas pode ter outro duelo ativo
+- O mesmo par nao pode ter mais de 1 duelo confirmado no dia
+
+**Resultado:** O bot posta um embed com o status do duelo e botoes de acao.
+
+---
+
+#### `/rank [page]`
+
+Exibe o ranking da season atual com 20 jogadores por pagina.
+
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `page` | Inteiro (opcional) | Pagina do ranking (padrao: 1) |
+
+**Exibicao:**
+```
+1. @jogador1 — 15pts | 12V 3D | Streak: 4 (max 7)
+2. @jogador2 — 10pts | 8V 2D | Streak: 2 (max 5)
+3. @jogador3 — 8pts | 7V 1D | Streak: 1 (max 3)
+4. @jogador4 — 5pts | 5V 0D | Streak: 5 (max 5)
+```
+
+Botoes **Anterior** / **Proxima** para navegar entre paginas.
+
+---
+
+#### `/mvp`
+
+Exibe os 3 melhores jogadores da season atual com destaque para Peak Streak.
+
+---
 
 #### `/pending [limit]`
 
-Mostra duelos que precisam de ação sua. Resposta ephemeral (só você vê).
+Mostra duelos que precisam de acao sua. Resposta ephemeral (so voce ve).
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `limit` | Inteiro (opcional) | Máximo de duelos a exibir (1-50) |
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `limit` | Inteiro (opcional) | Maximo de duelos a exibir (1-50) |
 
-**Exibição:**
-- Duelos ordenados por urgência:
+**Exibicao:**
+- Duelos ordenados por urgencia:
   1. Perto de expirar
-  2. Aguardando sua validação (testemunha)
-  3. Aguardando sua aceitação
+  2. Aguardando sua validacao (testemunha)
+  3. Aguardando sua aceitacao
   4. Prontos para iniciar
   5. Em andamento
-- Para cada duelo: `#id`, adversário, status, tempo restante (quando aplicável)
+- Para cada duelo: `#id`, adversario, status, tempo restante (quando aplicavel)
 
 ---
 
 #### `/history [@jogador] [vs] [from] [to] [page]`
 
-Exibe histórico de duelos e estatísticas na season atual, com filtros opcionais e paginação.
+Exibe historico de duelos e estatisticas na season atual, com filtros opcionais e paginacao.
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `player` | Usuário (opcional) | Jogador para consultar (padrão: você) |
-| `vs` | Usuário (opcional) | Filtrar duelos contra este oponente |
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `player` | Usuario (opcional) | Jogador para consultar (padrao: voce) |
+| `vs` | Usuario (opcional) | Filtrar duelos contra este oponente |
 | `from` | Texto (opcional) | Data inicial no formato `YYYY-MM-DD` |
 | `to` | Texto (opcional) | Data final no formato `YYYY-MM-DD` |
-| `page` | Inteiro (opcional) | Página do histórico (10 duelos por página) |
+| `page` | Inteiro (opcional) | Pagina do historico (10 duelos por pagina) |
 
-**Exibição:**
-- Estatísticas: pontos, vitórias, derrotas, win rate, streak atual, melhor streak
-- Duelos confirmados paginados (10 por página): resultado (V/D), placar, data, oponente
+**Exibicao:**
+- Estatisticas: pontos, vitorias, derrotas, win rate, streak atual, melhor streak
+- Duelos confirmados paginados (10 por pagina): resultado (V/D), placar, data, oponente
 - Filtros ativos exibidos no embed
-- Botões **Anterior** / **Próxima** para navegar entre páginas quando há mais de 10 duelos
+- Botoes **Anterior** / **Proxima** para navegar entre paginas
 
 ---
 
@@ -182,16 +306,15 @@ Exibe histórico de duelos e estatísticas na season atual, com filtros opcionai
 
 Exibe o perfil compacto de um jogador com ranking.
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `player` | Usuário (opcional) | Jogador para consultar (padrão: você) |
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `player` | Usuario (opcional) | Jogador para consultar (padrao: voce) |
 
-**Exibição:**
-- Posição no ranking (com medalha para top 3)
-- Pontos, vitórias, derrotas, win rate
+**Exibicao:**
+- Posicao no ranking (com medalha para top 3)
+- Pontos, vitorias, derrotas, win rate
 - Streak atual e melhor streak
-- Número de seasons jogadas
+- Numero de seasons jogadas
 
 ---
 
@@ -199,35 +322,28 @@ Exibe o perfil compacto de um jogador com ranking.
 
 Exibe o confronto direto entre dois jogadores na season atual.
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `player_a` | Usuário | Primeiro jogador |
-| `player_b` | Usuário | Segundo jogador |
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `player_a` | Usuario (obrigatorio) | Primeiro jogador |
+| `player_b` | Usuario (obrigatorio) | Segundo jogador |
 
-**Exibição:**
-- Total de duelos entre eles, vitórias e win rate de cada lado
-- Últimos 10 duelos do confronto com placar
+**Exibicao:**
+- Total de duelos entre eles, vitorias e win rate de cada lado
+- Ultimos 10 duelos do confronto com placar
 
 ---
 
 #### `/activity`
 
-Exibe os 10 jogadores mais ativos da season atual (por total de duelos jogados).
-
-**Exibição:**
-- Ranking por total de duelos (wins + losses)
-- Medalhas para top 3
+Exibe os 10 jogadores mais ativos da season atual (por total de duelos jogados). Medalhas para top 3.
 
 ---
 
 #### `/records`
 
-Exibe os recordes da season atual.
-
-**Exibição:**
-- **Maior Streak** — Jogador com maior sequência de vitórias consecutivas
-- **Melhor Win Rate** — Jogador com maior taxa de vitória (mínimo 5 jogos)
+Exibe os recordes da season atual:
+- **Maior Streak** — Jogador com maior sequencia de vitorias consecutivas
+- **Melhor Win Rate** — Jogador com maior taxa de vitoria (minimo 5 jogos)
 - **Mais Duelos** — Jogador com mais duelos jogados
 
 ---
@@ -236,8 +352,8 @@ Exibe os recordes da season atual.
 
 Exibe o status da season atual. Resposta ephemeral.
 
-**Exibição:**
-- Nome e número da season, datas de início/término, dias restantes
+**Exibicao:**
+- Nome e numero da season, datas de inicio/termino, dias restantes
 - Total de duelos e jogadores ativos
 - Top 3 parcial com pontos e V/D
 
@@ -245,114 +361,92 @@ Exibe o status da season atual. Resposta ephemeral.
 
 #### `/settings notifications on|off`
 
-Configura suas preferências de notificação.
+Configura suas preferencias de notificacao.
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `notifications` | Escolha | `Ativar DMs` ou `Desativar DMs` |
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `notifications` | Escolha (obrigatorio) | `Ativar DMs` ou `Desativar DMs` |
 
-**Comportamento:**
-- `on`: Você recebe notificações por DM (padrão).
-- `off`: DMs desativadas. Notificações são enviadas como menção no canal do duelo.
+- `on`: Voce recebe notificacoes por DM (padrao)
+- `off`: DMs desativadas. Notificacoes sao enviadas como mencao no canal do duelo
+
+---
+
+### Comandos admin
+
+Todos os comandos admin requerem cargo configurado em `ADMIN_ROLE_IDS`. Todas as acoes sao registradas no audit log persistente (`AdminActionLog`). O embed original do duelo e atualizado automaticamente quando possivel.
+
+Comandos admin sao **ocultos** para quem nao tem permissao de Administrador no Discord.
 
 ---
 
 #### `/admin cancel duel_id reason`
 
-Cancela um duelo forçadamente (apenas para cargos admin).
+Cancela um duelo forcadamente. Nao pode ser usado em duelos terminais (`CONFIRMED`, `CANCELLED`, `EXPIRED`).
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `duel_id` | Inteiro | ID do duelo a cancelar |
-| `reason` | Texto | Motivo do cancelamento |
-
-**Requisitos:**
-- Duelo não pode estar em estado terminal (`CONFIRMED`, `CANCELLED`, `EXPIRED`)
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `duel_id` | Inteiro (obrigatorio) | ID do duelo a cancelar |
+| `reason` | Texto (obrigatorio) | Motivo do cancelamento |
 
 ---
 
 #### `/admin reopen duel_id reason`
 
-Reabre um duelo em estado terminal para `IN_PROGRESS`.
+Reabre um duelo em estado terminal para `IN_PROGRESS`. Se o duelo estava `CONFIRMED`, reverte pontos/wins/losses dos jogadores. Limpa resultado (winnerId, score) ao reabrir.
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `duel_id` | Inteiro | ID do duelo a reabrir |
-| `reason` | Texto | Motivo da reabertura |
-
-**Comportamento:**
-- Se o duelo estava `CONFIRMED`, reverte os pontos/wins/losses dos jogadores
-- Limpa resultado (winnerId, score) ao reabrir
-- Duelo volta para `IN_PROGRESS`, permitindo novo envio de resultado
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `duel_id` | Inteiro (obrigatorio) | ID do duelo a reabrir |
+| `reason` | Texto (obrigatorio) | Motivo da reabertura |
 
 ---
 
 #### `/admin force-expire duel_id reason`
 
-Força a expiração de um duelo não-terminal.
+Forca a expiracao de um duelo nao-terminal.
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `duel_id` | Inteiro | ID do duelo a expirar |
-| `reason` | Texto | Motivo da expiração forçada |
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `duel_id` | Inteiro (obrigatorio) | ID do duelo a expirar |
+| `reason` | Texto (obrigatorio) | Motivo da expiracao forcada |
 
 ---
 
 #### `/admin fix-result duel_id winner score reason`
 
-Corrige o resultado de um duelo já confirmado, recalculando pontos automaticamente.
+Corrige o resultado de um duelo ja confirmado. Reverte os pontos do resultado antigo e aplica os novos em transacao atomica. O duelo permanece em `CONFIRMED`.
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `duel_id` | Inteiro | ID do duelo a corrigir |
-| `winner` | Usuário | Novo vencedor (deve ser participante do duelo) |
-| `score` | Texto | Novo placar no formato `W-L` (ex: `2-1`) |
-| `reason` | Texto | Motivo da correção |
-
-**Comportamento:**
-- Reverte os pontos do resultado antigo e aplica os novos, tudo em uma transação atômica
-- O duelo permanece em `CONFIRMED`
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `duel_id` | Inteiro (obrigatorio) | ID do duelo a corrigir |
+| `winner` | Usuario (obrigatorio) | Novo vencedor (deve ser participante do duelo) |
+| `score` | Texto (obrigatorio) | Novo placar no formato `W-L` (ex: `2-1`) |
+| `reason` | Texto (obrigatorio) | Motivo da correcao |
 
 ---
 
 #### `/admin logs duel_id`
 
-Exibe o histórico de ações admin em um duelo.
+Exibe o historico de acoes admin em um duelo.
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `duel_id` | Inteiro | ID do duelo |
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `duel_id` | Inteiro (obrigatorio) | ID do duelo |
 
-**Exibição:**
-- Data, ação, transição de status, admin responsável e motivo
+**Exibicao:** Data, acao, transicao de status, admin responsavel e motivo.
 
 ---
 
 #### `/admin season status`
 
-Exibe informações da season ativa.
-
-**Exibição:**
-- Número e nome da season, datas de início/término, dias restantes
-- Total de duelos e jogadores ativos
+Exibe informacoes da season ativa: numero, nome, datas, dias restantes, total de duelos, jogadores ativos.
 
 ---
 
 #### `/admin season end`
 
-Encerra a season ativa manualmente.
-
-**Comportamento:**
-- Cancela todos os duelos não-finalizados
-- Calcula automaticamente o pódio (top 3) pelo ranking
-- Define o campeão (top 1) na season
-- Envia embed público com pódio no canal
+Encerra a season ativa manualmente. Cancela duelos nao-finalizados, calcula podio (top 3), define campeao, envia embed publico.
 
 ---
 
@@ -371,190 +465,124 @@ Recalcula todos os stats de `PlayerSeason` (pontos, V/D, streak, peakStreak) a p
 
 #### `/admin season create [name] [duration]`
 
-Cria uma nova season.
+Cria uma nova season. Nao pode haver outra season ativa.
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
 | `name` | Texto (opcional) | Nome da season |
-| `duration` | Inteiro (opcional) | Duração em dias (padrão: 30, máx: 365) |
+| `duration` | Inteiro (opcional) | Duracao em dias (padrao: 30, max: 365) |
 
-**Requisitos:**
-- Não pode haver outra season ativa (encerre a anterior primeiro)
+---
+
+#### `/admin season repair season_id`
+
+Recalcula todos os stats de `PlayerSeason` (pontos, V/D, streak, peakStreak) a partir dos duelos confirmados. Uso: recuperacao de dados apos inconsistencia.
+
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `season_id` | Inteiro (obrigatorio) | ID da season a reparar |
 
 ---
 
 #### `/admin search player @player`
 
-Busca os últimos 15 duelos de um jogador (como desafiante, oponente ou testemunha).
+Busca os ultimos 15 duelos de um jogador (como desafiante, oponente ou testemunha).
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `player` | Usuário | Jogador para buscar |
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `player` | Usuario (obrigatorio) | Jogador para buscar |
 
 ---
 
 #### `/admin search status STATUS`
 
-Busca os últimos 15 duelos em um status específico.
+Busca os ultimos 15 duelos em um status especifico.
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `status` | Escolha | Status do duelo (PROPOSED, ACCEPTED, IN_PROGRESS, AWAITING_VALIDATION, CONFIRMED, CANCELLED, EXPIRED) |
-
----
-
-**Requisitos comuns a todos os comandos admin:**
-- Usuário deve possuir um dos cargos listados em `ADMIN_ROLE_IDS`
-- Todas as ações são registradas no audit log persistente (`AdminActionLog`)
-- O embed original do duelo é atualizado automaticamente quando possível
+| Parametro | Tipo | Descricao |
+|-----------|------|-----------|
+| `status` | Escolha (obrigatorio) | PROPOSED, ACCEPTED, IN_PROGRESS, AWAITING_VALIDATION, CONFIRMED, CANCELLED, EXPIRED |
 
 ---
 
-#### `/duel @oponente formato @testemunha`
+## Fluxo do Duelo
 
-Desafia um jogador para um duelo.
+Um duelo passa por 5 fases. Tudo acontece dentro de um unico embed que e atualizado in-place no Discord.
 
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `opponent` | Usuário | Quem você quer desafiar |
-| `format` | Escolha | `MD1 (Melhor de 1)` ou `MD3 (Melhor de 3)` |
-| `witness` | Usuário | Testemunha obrigatória |
-
-**Validações:**
-- Deve existir uma season ativa
-- Não pode duelar contra si mesmo
-- Oponente e testemunha não podem ser bots
-- Testemunha não pode ser um dos duelistas
-- Nenhum dos duelistas pode ter outro duelo ativo
-- O mesmo par não pode ter mais de 1 duelo confirmado no dia
-
-**Resultado:** O bot posta um embed com o status do duelo e botões de ação.
-
----
-
-#### `/rank [page]`
-
-Exibe o ranking da season atual.
-
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `page` | Inteiro (opcional) | Página do ranking (20 jogadores por página) |
-
-**Exibição:**
-```
-🥇 @jogador1 — 15pts | 12V 3D | Streak: 4 (max 7)
-🥈 @jogador2 — 10pts | 8V 2D | Streak: 2 (max 5)
-🥉 @jogador3 — 8pts | 7V 1D | Streak: 1 (max 3)
-4. @jogador4 — 5pts | 5V 0D | Streak: 5 (max 5)
-```
-
-Botões de **Anterior** / **Próxima** para navegar entre páginas.
-
----
-
-#### `/mvp`
-
-Exibe os 3 melhores jogadores da season atual.
-
-Mesmo formato do ranking, mas limitado ao top 3 (pódio) e destacando o **Peak Streak** (maior sequência de vitórias).
-
----
-
-### Fluxo Completo de um Duelo
-
-Um duelo passa por 5 fases. Tudo acontece dentro de um único embed que é atualizado in-place no Discord:
-
-#### Fase 1 — Proposta (`PROPOSED`)
+### Fase 1 — Proposta (`PROPOSED`)
 
 ```
 Jogador A usa /duel @JogadorB MD1 @Testemunha
 ```
 
 O bot posta um embed amarelo com:
-- Informações do duelo (desafiante, oponente, formato, testemunha)
-- Status de aceitação: `Oponente: Pendente`
-- Botões: **Aceitar Duelo** (oponente) | **Cancelar**
+- Informacoes do duelo (desafiante, oponente, formato, testemunha)
+- Status de aceitacao: `Oponente: Pendente`
+- Botoes: **Aceitar Duelo** (oponente) | **Cancelar**
 
-O oponente precisa aceitar para o duelo iniciar. A testemunha não precisa aceitar — ela só participa na validação do resultado. Se o oponente não aceitar em **30 minutos**, o duelo expira automaticamente.
+O oponente precisa aceitar para o duelo iniciar. A testemunha nao precisa aceitar — ela so participa na validacao do resultado. Se o oponente nao aceitar em **30 minutos**, o duelo expira automaticamente. Um aviso e enviado quando faltam **10 minutos**.
 
----
-
-#### Fase 2 — Aceito (`ACCEPTED`)
+### Fase 2 — Aceito (`ACCEPTED`)
 
 Quando o oponente aceita, o embed fica azul:
-- Botões: **Iniciar Duelo** | **Cancelar**
-- Qualquer um dos duelistas (desafiante ou oponente) pode iniciar
+- Botoes: **Iniciar Duelo** | **Cancelar**
+- Qualquer um dos duelistas pode iniciar
 
----
+### Fase 3 — Em Andamento (`IN_PROGRESS`)
 
-#### Fase 3 — Em Andamento (`IN_PROGRESS`)
-
-Após iniciar, o embed fica laranja:
-- Botões: **Enviar Resultado** | **Cancelar**
+Apos iniciar, o embed fica laranja:
+- Botoes: **Enviar Resultado** | **Cancelar**
 - Qualquer duelista pode enviar o resultado
 
-Ao clicar em **Enviar Resultado**, o bot mostra uma mensagem efêmera com 2 botões: os nomes dos jogadores. Clique em quem venceu.
+Ao clicar em **Enviar Resultado**, o bot mostra uma mensagem efemera com 2 botoes: os nomes dos jogadores. Clique em quem venceu.
 
-- **MD1:** O resultado é enviado automaticamente (1-0), sem necessidade de digitar placar.
-- **MD3:** Abre um modal pedindo apenas o placar (pontos do vencedor e perdedor). Placares válidos: 2-0 ou 2-1.
+- **MD1:** O resultado e enviado automaticamente (1-0), sem necessidade de digitar placar.
+- **MD3:** Abre um modal pedindo apenas o placar (pontos do vencedor e perdedor). Placares validos: 2-0 ou 2-1.
 
----
+### Fase 4 — Aguardando Validacao (`AWAITING_VALIDATION`)
 
-#### Fase 4 — Aguardando Validação (`AWAITING_VALIDATION`)
-
-Após enviar o resultado, o embed fica roxo:
+Apos enviar o resultado, o embed fica roxo:
 - Mostra o placar enviado
-- Botões: **Confirmar Resultado** | **Rejeitar Resultado**
+- Botoes: **Confirmar Resultado** | **Rejeitar Resultado**
 - **Somente a testemunha** pode interagir
 
-**Se a testemunha confirma:** O duelo é finalizado atomicamente — status, pontos e streak dos dois jogadores são atualizados numa única transação.
+**Se a testemunha confirma:** O duelo e finalizado atomicamente — status, pontos e streak dos dois jogadores sao atualizados numa unica transacao.
 
-**Se a testemunha rejeita:** O duelo volta para `IN_PROGRESS` e o resultado é apagado. Os duelistas podem enviar um novo resultado.
+**Se a testemunha rejeita:** O duelo volta para `IN_PROGRESS` e o resultado e apagado. Os duelistas podem enviar um novo resultado.
 
----
+### Fase 5 — Confirmado (`CONFIRMED`)
 
-#### Fase 5 — Confirmado (`CONFIRMED`)
-
-Embed fica verde, sem botões:
+Embed fica verde, sem botoes:
 - Mostra o placar final: `@vencedor venceu 2-1`
 - Footer: `Duelo #N`
 
-**Pontuação aplicada:**
+**Pontuacao aplicada:**
+
 | | Vencedor | Perdedor |
-|---|---|---|
+|---|----------|----------|
 | Pontos | +1 | -1 |
-| Vitórias/Derrotas | +1 vitória | +1 derrota |
+| Vitorias/Derrotas | +1 vitoria | +1 derrota |
 | Streak | +1 (acumula) | Reset para 0 |
-| Peak Streak | `MAX(atual, streak)` | Mantém |
+| Peak Streak | `MAX(atual, streak)` | Mantem |
 
----
+### Cancelamento
 
-#### Cancelamento
-
-Qualquer participante (desafiante, oponente ou testemunha) pode cancelar o duelo nas fases `PROPOSED`, `ACCEPTED` ou `IN_PROGRESS`. Nenhuma pontuação é aplicada.
-
----
+Qualquer participante (desafiante, oponente ou testemunha) pode cancelar o duelo nas fases `PROPOSED`, `ACCEPTED` ou `IN_PROGRESS`. Nenhuma pontuacao e aplicada.
 
 ### Diagrama de Estados
 
 ```
-                    ┌──────────────────────────────────────┐
-                    │                                      │
-                    v                                      │
-PROPOSED ──→ ACCEPTED ──→ IN_PROGRESS ──→ AWAITING_VALIDATION ──→ CONFIRMED
-    │            │              │                │
-    │            │              │                │
-    │            └──────────────┘                │
-    │                   │              (rejeição volta
-    │                   │               para IN_PROGRESS)
-    │                   v
-    │              CANCELLED
-    │
+                    +--------------------------------------+
+                    |                                      |
+                    v                                      |
+PROPOSED --> ACCEPTED --> IN_PROGRESS --> AWAITING_VALIDATION --> CONFIRMED
+    |            |              |                |
+    |            |              |                |
+    |            +--------------+                |
+    |                   |              (rejeicao volta
+    |                   |               para IN_PROGRESS)
+    |                   v
+    |              CANCELLED
+    |
     v
   EXPIRED
   (30 min sem aceitar)
@@ -562,124 +590,132 @@ PROPOSED ──→ ACCEPTED ──→ IN_PROGRESS ──→ AWAITING_VALIDATION 
 
 ---
 
-### Seasons
+## Seasons
 
-As seasons são gerenciadas automaticamente:
+As seasons sao gerenciadas automaticamente:
 
-1. **Criação** — Na primeira inicialização do bot ou quando não existe season ativa, uma nova é criada (Season 1, 2, 3...) com duração de 30 dias.
+1. **Criacao** — Na primeira inicializacao do bot ou quando nao existe season ativa, uma nova e criada (Season 1, 2, 3...) com duracao de 30 dias.
 2. **Fechamento** — A cada 5 minutos, o bot verifica se a season ativa expirou. Se sim:
-   - Todos os duelos não-finalizados são cancelados
-   - O jogador com mais pontos é registrado como campeão
-   - A season é desativada
-   - Uma nova season começa imediatamente
+   - Todos os duelos nao-finalizados sao cancelados
+   - O jogador com mais pontos e registrado como campeao
+   - A season e desativada
+   - Uma nova season comeca imediatamente
 3. **Ranking** — Cada jogador tem stats independentes por season (`PlayerSeason`). Nova season = placar zerado para todos.
+4. **Aviso** — 24 horas antes do encerramento, todos os jogadores ativos recebem notificacao.
 
 ---
 
-### Registro de Jogadores
+## Anti-Farm
 
-Nao existe comando de registro. Jogadores sao cadastrados automaticamente na primeira vez que participam de um duelo (como desafiante, oponente ou testemunha). O username do Discord e mantido atualizado a cada interação.
-
----
-
-### Anti-Farm
-
-Para evitar abuso de pontuação, existe uma regra simples: **o mesmo par de jogadores so pode ter 1 duelo confirmado por dia (UTC)**. Se Jogador A e Jogador B ja tiveram um duelo confirmado hoje, qualquer novo desafio entre eles (em qualquer direção) sera bloqueado.
-
----
-
-### Notificações
-
-O bot envia DMs automáticas nos eventos importantes do duelo. Se a DM falhar (privacidade desativada) ou o jogador tiver desativado DMs via `/settings`, faz fallback com menção no canal do duelo.
-
-**Anti-spam:** Cada notificação tem cooldown de 5 minutos por usuário por tipo de evento. Notificações repetidas dentro desse período são suprimidas.
-
-**Opt-out:** Jogadores podem desativar DMs com `/settings notifications off`. Todas as notificações passam a ser enviadas como menção no canal.
-
-| Evento | Quem recebe |
-|---|---|
-| Duelo criado | Oponente + testemunha |
-| Oponente aceitou (ACCEPTED) | Ambos duelistas |
-| Resultado enviado | Testemunha |
-| Resultado confirmado | Ambos duelistas |
-| Resultado rejeitado | Ambos duelistas |
-| Duelo expirando (10 min restantes) | Oponente + testemunha |
-| Duelo expirado | Todos (3 participantes) |
-| Admin cancelou duelo | Ambos duelistas |
-| Admin reabriu duelo | Ambos duelistas |
-| Admin forçou expiração | Ambos duelistas |
-| Admin corrigiu resultado | Ambos duelistas |
-| Season encerrando (24h) | Todos os jogadores ativos da season |
+Para evitar abuso de pontuacao: **o mesmo par de jogadores so pode ter 1 duelo confirmado por dia (UTC)**. Se Jogador A e Jogador B ja tiveram um duelo confirmado hoje, qualquer novo desafio entre eles (em qualquer direcao) sera bloqueado. Reset a 00:00 UTC.
 
 ---
 
 ## Arquitetura
 
+### Stack
+
+| Tecnologia | Uso |
+|------------|-----|
+| **Node.js 20** | Runtime |
+| **TypeScript** | Linguagem (strict mode) |
+| **Discord.js 14** | Integracao Discord |
+| **Prisma** | ORM + migrations |
+| **PostgreSQL** | Banco de dados (Supabase) |
+| **Vitest** | Testes unitarios |
+| **Docker** | Deploy (Alpine) |
+
+### Estrutura de pastas
+
 ```
 src/
-├── commands/          # Slash commands (/duel, /rank, /mvp, /pending, /history, /profile, /h2h, /activity, /records, /season, /settings, /admin)
-│   └── index.ts       # Barrel — mapa command → handler
+├── commands/          # Slash commands (12 comandos)
+│   └── index.ts       # Barrel — mapa command -> handler
 ├── buttons/           # Button handlers (aceitar, iniciar, cancelar, etc.)
 │   ├── handler.ts     # HOF que elimina boilerplate dos handlers
-│   └── index.ts       # Barrel — mapa action → handler
+│   └── index.ts       # Barrel — mapa action -> handler
 ├── modals/            # Modal handlers (submit-score)
-│   └── index.ts       # Barrel — mapa action → handler
-├── services/          # Logica de negocio (duel, player, ranking, season, antifarm, pending, history, profile, h2h, activity, records, audit, search)
-├── lib/               # Utilitarios (embeds, components, logger, prisma, pagination, notifications, cooldown, retry, job-health, ops-webhook, notification-metrics, health-server, validation)
+│   └── index.ts       # Barrel — mapa action -> handler
+├── services/          # Logica de negocio
+│                        (duel, player, ranking, season, antifarm, pending,
+│                         history, profile, h2h, activity, records, audit, search)
+├── lib/               # Utilitarios
+│                        (embeds, components, logger, prisma, pagination,
+│                         notifications, cooldown, retry, job-health,
+│                         ops-webhook, notification-metrics, health-server, validation)
 ├── events/            # Event handlers Discord (ready, interactionCreate)
 ├── jobs/              # Background jobs (expire-duels, season-check)
-├── config.ts          # Constantes e validação de env vars
+├── config.ts          # Constantes e validacao de env vars
 ├── index.ts           # Bootstrap do client Discord + graceful shutdown
 └── deploy-commands.ts # Script de registro de slash commands
 ```
 
-### Decisões Arquiteturais
+### Camadas
 
-- **Optimistic locking** — Todas as transições de estado usam `updateMany` com filtro de status. Se o status ja mudou (race condition), retorna null e mostra erro amigável.
-- **Transação atômica na confirmação** — `confirmAndApplyResult` encapsula `confirmResult` + `applyResult` dentro de `prisma.$transaction()` no service layer, garantindo consistência entre status do duelo e stats dos jogadores.
-- **Notificações fire-and-forget** — DM com fallback para menção no canal em todos os eventos do ciclo de vida do duelo (criação, aceitação, resultado, confirmação, rejeição, expiração). Nunca bloqueiam o fluxo principal.
+- **Commands** — Recebem interacoes, delegam aos services sem logica de negocio propria
+- **Buttons/Modals** — Barrel files exportam mapas `Record<string, handler>` para lookup direto
+- **Services** — Centralizam validacoes, pontuacao, regras anti-farm, gestao de seasons e confirmacao atomica
+- **Lib** — Embeds builder, componentes Discord, logger estruturado, Prisma client, paginacao, notificacoes, cooldown, retry, health server, ops webhook, metricas, validacao
+- **Jobs** — Background jobs com setTimeout recursivo (expiracao em 1min, season check em 5min)
+
+### Decisoes arquiteturais
+
+- **Optimistic locking** — Todas as transicoes de estado usam `updateMany` com filtro de status. Se o status ja mudou (race condition), retorna null e mostra erro amigavel.
+- **Transacao atomica na confirmacao** — `confirmAndApplyResult` encapsula `confirmResult` + `applyResult` dentro de `prisma.$transaction()`, garantindo consistencia entre status do duelo e stats dos jogadores.
+- **Notificacoes fire-and-forget** — DM com fallback para mencao no canal em todos os eventos do ciclo de vida. Nunca bloqueiam o fluxo principal.
 - **Graceful shutdown** — `SIGTERM`/`SIGINT` desconectam o client Discord e o Prisma antes de encerrar o processo.
-- **Embed único editado in-place** — Cada duelo tem um embed persistente que é atualizado via `channelId` + `messageId`. Botões mudam dinamicamente conforme o estado.
+- **Embed unico editado in-place** — Cada duelo tem um embed persistente que e atualizado via `channelId` + `messageId`. Botoes mudam dinamicamente conforme o estado.
 - **Auto-discovery de handlers** — Barrel files (`index.ts`) exportam mapas `Record<string, handler>`. O roteador em `interactionCreate.ts` faz lookup direto sem `switch/case`.
-- **Jobs com setTimeout recursivo** — Evita execução concorrente (ao contrário de `setInterval`). Cada ciclo agenda o próximo só após terminar.
-- **Retry com backoff exponencial** — `withRetry` genérico (1s → 2s → 4s) aplicado nos jobs de expiração e season. Falha final é logada e o próximo ciclo tenta novamente.
-- **Cooldown in-memory** — Map genérico key-based para rate limiting. Usado no `/duel` (30s) e nos botões (5s). Aceita perda no restart.
-- **Job health check** — Registro in-memory do último ciclo bem-sucedido por job. Log de warning se gap entre ciclos excede 2x o intervalo esperado.
-- **Reconcile de embeds no startup** — `reconcileStaleEmbeds()` limpa botões de duelos terminais das últimas 24h ao iniciar, evitando embeds desatualizados.
-- **Logging estruturado** — JSON com timestamp, level e context. Sem dependência externa. Correlação por `requestId` (interaction ID do Discord) em todas as interações.
-- **Health server HTTP** — Endpoint `/health` retorna status do bot (connected/disconnected), saúde dos jobs (gap detection), uptime e métricas de notificações. Responde `200 ok` ou `503 degraded`. Configurável via `HEALTH_PORT`.
-- **Alertas ops via webhook** — Alertas de falhas críticas (jobs falhando, season não rotacionada) enviados para canal privado do Discord via `OPS_WEBHOOK_URL`. Dedup automático: alerta enviado uma única vez por incidente até recuperação.
-- **Métricas de notificações** — Contadores in-memory de DM enviadas/falhas, fallbacks, throttled. Expostos no `/health`. Aceita perda no restart.
+- **Jobs com setTimeout recursivo** — Evita execucao concorrente (ao contrario de `setInterval`). Cada ciclo agenda o proximo so apos terminar.
+- **Retry com backoff exponencial** — `withRetry` generico (1s -> 2s -> 4s) aplicado nos jobs. Falha final e logada e o proximo ciclo tenta novamente.
+- **Cooldown in-memory** — Map generico key-based para rate limiting. Usado no `/duel` (30s) e nos botoes (5s). Aceita perda no restart.
+- **Job health check** — Registro in-memory do ultimo ciclo bem-sucedido por job. Log de warning se gap entre ciclos excede 2x o intervalo esperado.
+- **Reconcile de embeds no startup** — `reconcileStaleEmbeds()` limpa botoes de duelos terminais das ultimas 24h ao iniciar, evitando embeds desatualizados.
+- **Logging estruturado** — JSON com timestamp, level e context. Sem dependencia externa. Correlacao por `requestId` (interaction ID do Discord) em todas as interacoes.
+- **Health server HTTP** — Endpoint `/health` retorna status do bot, saude dos jobs, uptime e metricas de notificacoes. Responde `200 ok` ou `503 degraded`. Configuravel via `HEALTH_PORT`.
+- **Alertas ops via webhook** — Alertas de falhas criticas enviados para canal privado do Discord via `OPS_WEBHOOK_URL`. Dedup automatico: alerta enviado uma unica vez por incidente ate recuperacao.
+- **Metricas de notificacoes** — Contadores in-memory de DM enviadas/falhas, fallbacks, throttled. Expostos no `/health`. Aceita perda no restart.
+- **Input sanitization** — `sanitizeText` neutraliza @everyone/@here injection. `validateScore` centraliza validacao de placar.
+- **DB constraints** — CHECK constraints para integridade de placar e winnerId. Indice unico parcial para prevenir multiplas seasons ativas.
 
 ---
 
-## Configuração
+## Testes
 
-Constantes configuráveis em `src/config.ts`:
+```bash
+# Rodar todos os testes
+npm test
 
-| Constante | Valor | Descrição |
-|---|---|---|
-| `SEASON_DURATION_DAYS` | 30 | Duração de uma season em dias |
-| `DUEL_EXPIRY_MS` | 30 min | Tempo para aceitar antes de expirar |
-| `EXPIRY_WARNING_MS` | 10 min | Tempo antes da expiração para enviar aviso |
-| `EXPIRE_CHECK_INTERVAL_MS` | 1 min | Intervalo do job de expiração |
-| `SEASON_CHECK_INTERVAL_MS` | 5 min | Intervalo do job de verificação de season |
-| `RANK_PAGE_SIZE` | 20 | Jogadores por página no ranking |
-| `HISTORY_PAGE_SIZE` | 10 | Duelos por página no histórico |
-| `DUEL_COOLDOWN_MS` | 30 seg | Cooldown entre criações de duelo por usuário |
-| `BUTTON_COOLDOWN_MS` | 5 seg | Debounce em botões de ação |
-| `NOTIFICATION_COOLDOWN_MS` | 5 min | Cooldown de notificação por usuário por evento |
-| `SEASON_ENDING_WARNING_MS` | 24h | Tempo antes do fim da season para enviar aviso |
-| `HEALTH_PORT` | 8080 | Porta do servidor HTTP de health check |
-| `OPS_WEBHOOK_URL` | — | Webhook Discord para alertas de operação (opcional) |
-| `POINTS_WIN` | +1 | Pontos por vitória |
-| `POINTS_LOSS` | -1 | Pontos por derrota |
+# Modo watch
+npm run test:watch
+```
+
+55 arquivos de teste, 380 testes. Co-localizados com o codigo fonte (`*.test.ts`), usando mocks do Vitest. Nenhuma dependencia de banco real nos testes.
+
+### Lint e formatacao
+
+```bash
+# Lint (ESLint com typescript-eslint)
+npm run lint
+npm run lint:fix
+
+# Formatacao (Prettier)
+npm run format
+npm run format:check
+```
+
+### CI/CD
+
+- **GitHub Actions** (`ci.yml`) — Roda lint, typecheck (`tsc --noEmit`) e testes com cobertura (thresholds: 80% lines/functions, 70% branches) em todo push/PR para `main`
+- **Branch protection** — PRs obrigatorios, CI deve passar, squash merge only, force push bloqueado
+- **Deploy** — Railway faz deploy automatico apos merge na `main`
 
 ---
 
-## Roadmap
+## Links
 
-Veja [`docs/ROADMAP.md`](docs/ROADMAP.md) para próximos passos e decisões de produto.
+- [Historico de desenvolvimento](docs/HISTORY.md) — Registro completo das 8 fases de evolucao
+- [Roadmap](docs/ROADMAP.md) — Ideias futuras e possiveis melhorias
 
 ---
 
