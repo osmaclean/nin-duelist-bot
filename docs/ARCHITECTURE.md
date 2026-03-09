@@ -24,7 +24,7 @@ Documentacao tecnica completa: stack, estrutura, decisoes arquiteturais, CI/CD, 
 
 ```
 src/
-├── commands/          # Slash commands (12 comandos)
+├── commands/          # Slash commands (13 comandos)
 │   └── index.ts       # Barrel — mapa command -> handler
 ├── buttons/           # Button handlers (aceitar, iniciar, cancelar, etc.)
 │   ├── handler.ts     # HOF que elimina boilerplate dos handlers

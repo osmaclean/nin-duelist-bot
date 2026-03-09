@@ -276,6 +276,21 @@ Objetivo: migrar deploy do Railway para Fly.io com seguranca rigida e deploy aut
 
 ---
 
+## Fase 10 — Comando /help
+
+Objetivo: facilitar onboarding de novos jogadores com guia rapido acessivel direto no Discord.
+
+- Comando `/help` — embed ephemeral com:
+  - Descricao rapida do bot
+  - Fluxo de duelo em 4 passos
+  - Comandos agrupados por categoria (Duelos, Rankings, Estatisticas, Temporada & Config)
+  - Regras importantes (testemunha, pontuacao, anti-farm, expiracao)
+  - Link para documentacao oficial: https://ninduelist.vercel.app/
+- Sem banco de dados, sem defer, resposta direta e ephemeral
+- Total de comandos: 13 (12 anteriores + help)
+
+---
+
 ## Problemas Conhecidos (todos resolvidos)
 
 | # | Problema | Resolvido em |
