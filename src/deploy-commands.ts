@@ -72,6 +72,8 @@ const commands = [
     )
     .toJSON(),
 
+  new SlashCommandBuilder().setName('help').setDescription('Guia rápido de como usar o bot').toJSON(),
+
   new SlashCommandBuilder()
     .setName('admin')
     .setDescription('Comandos administrativos')
