@@ -111,7 +111,7 @@ describe('deploy-commands', () => {
     expect(Routes.applicationGuildCommands).toHaveBeenCalledWith('client-id', 'guild-id');
     expect(put).toHaveBeenCalledWith('guild-route', expect.objectContaining({ body: expect.any(Array) }));
     const body = put.mock.calls[0][1].body;
-    expect(body).toHaveLength(12);
+    expect(body).toHaveLength(13);
     expect(body.map((c: any) => c.name)).toEqual([
       'duel',
       'rank',
@@ -124,6 +124,7 @@ describe('deploy-commands', () => {
       'records',
       'season',
       'settings',
+      'help',
       'admin',
     ]);
     expect(mockLogger.info).toHaveBeenCalledWith('Registrando slash commands');
