@@ -6,13 +6,9 @@ Bot Discord para sistema de duelos ranqueados do **Nin Online**. Gerencia desafi
 
 ---
 
-## Introducao
-
-### O que e o NinDuelist
+## O que e o NinDuelist
 
 Bot Discord para gerenciar duelos ranqueados no Nin Online. Jogadores usam slash commands para desafiar oponentes. Cada duelo exige uma testemunha obrigatoria que valida o resultado. A pontuacao e simples: +1 ponto por vitoria, -1 por derrota. Os duelos acontecem dentro de um embed unico atualizado continuamente com botoes dinamicos.
-
-### Registro de jogadores
 
 Nao existe comando de registro. Jogadores sao cadastrados automaticamente na primeira vez que participam de um duelo (como desafiante, oponente ou testemunha). O username do Discord e mantido atualizado a cada interacao.
 
@@ -56,13 +52,13 @@ Nao existe comando de registro. Jogadores sao cadastrados automaticamente na pri
 | **Audit log** | Historico persistente de todas as acoes admin |
 | **Busca** | Buscar duelos por jogador ou por status |
 | **Gestao de season** | Criar, encerrar e consultar seasons |
-| **Visibilidade** | Comandos admin ocultos para quem nao e admin (`Administrator` permission) |
+| **Visibilidade** | Comandos admin ocultos para quem nao e admin |
 
 ### Notificacoes
 
-DMs automaticas em eventos do ciclo de vida do duelo. Se a DM falhar ou o jogador tiver desativado DMs via `/settings`, faz fallback com mencao no canal do duelo. Notificacoes nunca bloqueiam o fluxo principal (fire-and-forget).
+DMs automaticas em eventos do ciclo de vida do duelo. Se a DM falhar ou o jogador tiver desativado DMs via `/settings`, faz fallback com mencao no canal do duelo. Notificacoes nunca bloqueiam o fluxo principal.
 
-**Anti-spam:** Cooldown de 5 minutos por usuario por tipo de evento. Notificacoes repetidas dentro desse periodo sao suprimidas.
+**Anti-spam:** Cooldown de 5 minutos por usuario por tipo de evento.
 
 **Opt-out:** Jogadores podem desativar DMs com `/settings notifications off`.
 
@@ -80,134 +76,6 @@ DMs automaticas em eventos do ciclo de vida do duelo. Se a DM falhar ou o jogado
 | Admin forcou expiracao | Ambos duelistas |
 | Admin corrigiu resultado | Ambos duelistas |
 | Season encerrando (24h) | Todos os jogadores ativos da season |
-
-### Observabilidade
-
-| Feature | Descricao |
-|---------|-----------|
-| **Health server** | Endpoint HTTP `/health` — status do bot, saude dos jobs, uptime, metricas de notificacoes. Responde `200 ok` ou `503 degraded` |
-| **Alertas ops** | Webhook Discord para canal privado — alertas de falhas criticas de jobs. Dedup automatico (1 alerta por incidente ate recovery) |
-| **Metricas de notificacoes** | Contadores in-memory: DM sent/failed, fallback sent/failed, throttled. Expostos no `/health` |
-| **Logging estruturado** | JSON com timestamp, level e context. Correlacao por `requestId` (interaction ID) em todas as interacoes |
-
-### Hardening
-
-| Feature | Descricao |
-|---------|-----------|
-| **Input sanitization** | `sanitizeText` neutraliza @everyone/@here injection em inputs de texto |
-| **Score validation** | `validateScore` centraliza validacao de placar por formato (MD1: 1-0, MD3: 2-0 ou 2-1) |
-| **Transaction timeout** | Timeout explicito (10s) nas interactive transactions do Prisma (`confirmAndApplyResult` e admin `fix-result`) |
-| **DB constraints** | CHECK para integridade de placar, CHECK para winnerId, indice unico parcial para season ativa |
-| **Optimistic locking** | Todas as transicoes de estado usam `updateMany` com filtro de status |
-| **Transacao atomica** | `confirmAndApplyResult` encapsula confirmacao + stats numa unica transacao |
-
----
-
-## Setup
-
-### Pre-requisitos
-
-- **Node.js 20** ou superior
-- **PostgreSQL** (recomendado: Supabase)
-- **Aplicacao Discord** criada no Developer Portal
-- **Git**
-
-### 1. Clonar e instalar
-
-```bash
-git clone <repo-url>
-cd nin-duelist-bot
-npm install
-```
-
-### 2. Configurar variaveis de ambiente
-
-```bash
-cp .env.example .env
-```
-
-Preencha as variaveis conforme a tabela na secao [Configuracao](#configuracao).
-
-O bot valida todas as variaveis obrigatorias no startup e falha com mensagem clara se alguma estiver faltando.
-
-### 3. Banco de dados
-
-**Desenvolvimento local:**
-
-```bash
-npm run generate   # Gera o client Prisma
-npm run migrate    # Aplica migrations
-```
-
-**Supabase com PgBouncer:**
-
-Rode os arquivos SQL diretamente no SQL Editor, **nesta ordem:**
-
-1. `prisma/migration.sql` — schema inicial
-2. `prisma/migration_phase5.sql` — colunas de notificacao e season
-3. `prisma/migration_phase8.sql` — constraints, indices e limpeza
-
-### 4. Registrar slash commands
-
-```bash
-npm run deploy-commands
-```
-
-Se `DISCORD_GUILD_ID` estiver definido, registra na guild (instantaneo). Senao, registra globalmente (pode levar ate 1h para propagar).
-
-### 5. Rodar
-
-```bash
-# Desenvolvimento
-npm run dev
-
-# Producao
-npm run build
-npm start
-```
-
-### 6. Docker
-
-```bash
-docker build -t ninduelist .
-docker run --env-file .env ninduelist
-```
-
----
-
-## Configuracao
-
-### Variaveis de ambiente
-
-| Variavel | Obrigatoria | Descricao |
-|----------|-------------|-----------|
-| `DISCORD_TOKEN` | Sim | Token do bot Discord |
-| `DISCORD_CLIENT_ID` | Sim | Application ID do bot |
-| `DISCORD_GUILD_ID` | Nao | Restringe commands a uma guild (dev) |
-| `DATABASE_URL` | Sim | Connection string PostgreSQL |
-| `ADMIN_ROLE_IDS` | Nao | IDs de cargos admin separados por virgula |
-| `OPS_WEBHOOK_URL` | Nao | Webhook Discord para alertas de ops (canal privado) |
-| `HEALTH_PORT` | Nao | Porta do health server HTTP (padrao: 8080) |
-
-### Constantes (`src/config.ts`)
-
-| Constante | Valor | Descricao |
-|-----------|-------|-----------|
-| `SEASON_DURATION_DAYS` | 30 | Duracao de uma season em dias |
-| `DUEL_EXPIRY_MS` | 30 min | Tempo para aceitar antes de expirar |
-| `EXPIRY_WARNING_MS` | 10 min | Tempo antes da expiracao para enviar aviso |
-| `EXPIRE_CHECK_INTERVAL_MS` | 1 min | Intervalo do job de expiracao |
-| `SEASON_CHECK_INTERVAL_MS` | 5 min | Intervalo do job de verificacao de season |
-| `RANK_PAGE_SIZE` | 20 | Jogadores por pagina no ranking |
-| `HISTORY_PAGE_SIZE` | 10 | Duelos por pagina no historico |
-| `DUEL_COOLDOWN_MS` | 30 seg | Cooldown entre criacoes de duelo por usuario |
-| `BUTTON_COOLDOWN_MS` | 5 seg | Debounce em botoes de acao |
-| `NOTIFICATION_COOLDOWN_MS` | 5 min | Cooldown de notificacao por usuario por evento |
-| `SEASON_ENDING_WARNING_MS` | 24h | Tempo antes do fim da season para enviar aviso |
-| `HEALTH_PORT` | 8080 | Porta do servidor HTTP de health check |
-| `OPS_WEBHOOK_URL` | — | Webhook Discord para alertas de operacao (opcional) |
-| `POINTS_WIN` | +1 | Pontos por vitoria |
-| `POINTS_LOSS` | -1 | Pontos por derrota |
 
 ---
 
@@ -374,7 +242,7 @@ Configura suas preferencias de notificacao.
 
 ### Comandos admin
 
-Todos os comandos admin requerem cargo configurado em `ADMIN_ROLE_IDS`. Todas as acoes sao registradas no audit log persistente (`AdminActionLog`). O embed original do duelo e atualizado automaticamente quando possivel.
+Todos os comandos admin requerem cargo de administrador. Todas as acoes sao registradas no audit log persistente. O embed original do duelo e atualizado automaticamente quando possivel.
 
 Comandos admin sao **ocultos** para quem nao tem permissao de Administrador no Discord.
 
@@ -393,7 +261,7 @@ Cancela um duelo forcadamente. Nao pode ser usado em duelos terminais (`CONFIRME
 
 #### `/admin reopen duel_id reason`
 
-Reabre um duelo em estado terminal para `IN_PROGRESS`. Se o duelo estava `CONFIRMED`, reverte pontos/wins/losses dos jogadores. Limpa resultado (winnerId, score) ao reabrir.
+Reabre um duelo em estado terminal para `IN_PROGRESS`. Se o duelo estava `CONFIRMED`, reverte pontos/wins/losses dos jogadores. Limpa resultado ao reabrir.
 
 | Parametro | Tipo | Descricao |
 |-----------|------|-----------|
@@ -415,7 +283,7 @@ Forca a expiracao de um duelo nao-terminal.
 
 #### `/admin fix-result duel_id winner score reason`
 
-Corrige o resultado de um duelo ja confirmado. Reverte os pontos do resultado antigo e aplica os novos em transacao atomica. O duelo permanece em `CONFIRMED`.
+Corrige o resultado de um duelo ja confirmado. Reverte os pontos do resultado antigo e aplica os novos atomicamente. O duelo permanece em `CONFIRMED`.
 
 | Parametro | Tipo | Descricao |
 |-----------|------|-----------|
@@ -450,19 +318,6 @@ Encerra a season ativa manualmente. Cancela duelos nao-finalizados, calcula podi
 
 ---
 
-#### `/admin season repair season_id`
-
-Recalcula todos os stats de `PlayerSeason` (pontos, V/D, streak, peakStreak) a partir dos duelos confirmados.
-
-**Parâmetros:**
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `season_id` | Inteiro | ID da season a reparar |
-
-**Uso:** Recuperação de dados após inconsistência. Útil se stats foram corrompidos por bug ou intervenção manual no banco.
-
----
-
 #### `/admin season create [name] [duration]`
 
 Cria uma nova season. Nao pode haver outra season ativa.
@@ -476,7 +331,7 @@ Cria uma nova season. Nao pode haver outra season ativa.
 
 #### `/admin season repair season_id`
 
-Recalcula todos os stats de `PlayerSeason` (pontos, V/D, streak, peakStreak) a partir dos duelos confirmados. Uso: recuperacao de dados apos inconsistencia.
+Recalcula todos os stats de PlayerSeason (pontos, V/D, streak, peakStreak) a partir dos duelos confirmados. Uso: recuperacao de dados apos inconsistencia.
 
 | Parametro | Tipo | Descricao |
 |-----------|------|-----------|
@@ -600,7 +455,7 @@ As seasons sao gerenciadas automaticamente:
    - O jogador com mais pontos e registrado como campeao
    - A season e desativada
    - Uma nova season comeca imediatamente
-3. **Ranking** — Cada jogador tem stats independentes por season (`PlayerSeason`). Nova season = placar zerado para todos.
+3. **Ranking** — Cada jogador tem stats independentes por season. Nova season = placar zerado para todos.
 4. **Aviso** — 24 horas antes do encerramento, todos os jogadores ativos recebem notificacao.
 
 ---
@@ -611,111 +466,22 @@ Para evitar abuso de pontuacao: **o mesmo par de jogadores so pode ter 1 duelo c
 
 ---
 
-## Arquitetura
+## Documentacao
 
-### Stack
-
-| Tecnologia | Uso |
-|------------|-----|
-| **Node.js 20** | Runtime |
-| **TypeScript** | Linguagem (strict mode) |
-| **Discord.js 14** | Integracao Discord |
-| **Prisma** | ORM + migrations |
-| **PostgreSQL** | Banco de dados (Supabase) |
-| **Vitest** | Testes unitarios |
-| **Docker** | Deploy (Alpine) |
-
-### Estrutura de pastas
-
-```
-src/
-├── commands/          # Slash commands (12 comandos)
-│   └── index.ts       # Barrel — mapa command -> handler
-├── buttons/           # Button handlers (aceitar, iniciar, cancelar, etc.)
-│   ├── handler.ts     # HOF que elimina boilerplate dos handlers
-│   └── index.ts       # Barrel — mapa action -> handler
-├── modals/            # Modal handlers (submit-score)
-│   └── index.ts       # Barrel — mapa action -> handler
-├── services/          # Logica de negocio
-│                        (duel, player, ranking, season, antifarm, pending,
-│                         history, profile, h2h, activity, records, audit, search)
-├── lib/               # Utilitarios
-│                        (embeds, components, logger, prisma, pagination,
-│                         notifications, cooldown, retry, job-health,
-│                         ops-webhook, notification-metrics, health-server, validation)
-├── events/            # Event handlers Discord (ready, interactionCreate)
-├── jobs/              # Background jobs (expire-duels, season-check)
-├── config.ts          # Constantes e validacao de env vars
-├── index.ts           # Bootstrap do client Discord + graceful shutdown
-└── deploy-commands.ts # Script de registro de slash commands
-```
-
-### Camadas
-
-- **Commands** — Recebem interacoes, delegam aos services sem logica de negocio propria
-- **Buttons/Modals** — Barrel files exportam mapas `Record<string, handler>` para lookup direto
-- **Services** — Centralizam validacoes, pontuacao, regras anti-farm, gestao de seasons e confirmacao atomica
-- **Lib** — Embeds builder, componentes Discord, logger estruturado, Prisma client, paginacao, notificacoes, cooldown, retry, health server, ops webhook, metricas, validacao
-- **Jobs** — Background jobs com setTimeout recursivo (expiracao em 1min, season check em 5min)
-
-### Decisoes arquiteturais
-
-- **Optimistic locking** — Todas as transicoes de estado usam `updateMany` com filtro de status. Se o status ja mudou (race condition), retorna null e mostra erro amigavel.
-- **Transacao atomica na confirmacao** — `confirmAndApplyResult` encapsula `confirmResult` + `applyResult` dentro de `prisma.$transaction()`, garantindo consistencia entre status do duelo e stats dos jogadores.
-- **Notificacoes fire-and-forget** — DM com fallback para mencao no canal em todos os eventos do ciclo de vida. Nunca bloqueiam o fluxo principal.
-- **Graceful shutdown** — `SIGTERM`/`SIGINT` desconectam o client Discord e o Prisma antes de encerrar o processo.
-- **Embed unico editado in-place** — Cada duelo tem um embed persistente que e atualizado via `channelId` + `messageId`. Botoes mudam dinamicamente conforme o estado.
-- **Auto-discovery de handlers** — Barrel files (`index.ts`) exportam mapas `Record<string, handler>`. O roteador em `interactionCreate.ts` faz lookup direto sem `switch/case`.
-- **Jobs com setTimeout recursivo** — Evita execucao concorrente (ao contrario de `setInterval`). Cada ciclo agenda o proximo so apos terminar.
-- **Retry com backoff exponencial** — `withRetry` generico (1s -> 2s -> 4s) aplicado nos jobs. Falha final e logada e o proximo ciclo tenta novamente.
-- **Cooldown in-memory** — Map generico key-based para rate limiting. Usado no `/duel` (30s) e nos botoes (5s). Aceita perda no restart.
-- **Job health check** — Registro in-memory do ultimo ciclo bem-sucedido por job. Log de warning se gap entre ciclos excede 2x o intervalo esperado.
-- **Reconcile de embeds no startup** — `reconcileStaleEmbeds()` limpa botoes de duelos terminais das ultimas 24h ao iniciar, evitando embeds desatualizados.
-- **Logging estruturado** — JSON com timestamp, level e context. Sem dependencia externa. Correlacao por `requestId` (interaction ID do Discord) em todas as interacoes.
-- **Health server HTTP** — Endpoint `/health` retorna status do bot, saude dos jobs, uptime e metricas de notificacoes. Responde `200 ok` ou `503 degraded`. Configuravel via `HEALTH_PORT`.
-- **Alertas ops via webhook** — Alertas de falhas criticas enviados para canal privado do Discord via `OPS_WEBHOOK_URL`. Dedup automatico: alerta enviado uma unica vez por incidente ate recuperacao.
-- **Metricas de notificacoes** — Contadores in-memory de DM enviadas/falhas, fallbacks, throttled. Expostos no `/health`. Aceita perda no restart.
-- **Input sanitization** — `sanitizeText` neutraliza @everyone/@here injection. `validateScore` centraliza validacao de placar.
-- **DB constraints** — CHECK constraints para integridade de placar e winnerId. Indice unico parcial para prevenir multiplas seasons ativas.
+| Documento | Descricao |
+|-----------|-----------|
+| [Setup](docs/SETUP.md) | Guia de instalacao, configuracao e deploy |
+| [Arquitetura](docs/ARCHITECTURE.md) | Stack, estrutura, decisoes tecnicas, CI/CD, hardening |
+| [Historico](docs/HISTORY.md) | Registro completo das fases de desenvolvimento |
+| [Roadmap](docs/ROADMAP.md) | Ideias futuras e possiveis melhorias |
 
 ---
 
-## Testes
+## Acesso
 
-```bash
-# Rodar todos os testes
-npm test
+Bot de uso privado para servidores do **Nin Online**. Para solicitar acesso ao bot no seu servidor, entre em contato por e-mail:
 
-# Modo watch
-npm run test:watch
-```
-
-55 arquivos de teste, 380 testes. Co-localizados com o codigo fonte (`*.test.ts`), usando mocks do Vitest. Nenhuma dependencia de banco real nos testes.
-
-### Lint e formatacao
-
-```bash
-# Lint (ESLint com typescript-eslint)
-npm run lint
-npm run lint:fix
-
-# Formatacao (Prettier)
-npm run format
-npm run format:check
-```
-
-### CI/CD
-
-- **GitHub Actions** (`ci.yml`) — Roda lint, typecheck (`tsc --noEmit`) e testes com cobertura (thresholds: 80% lines/functions, 70% branches) em todo push/PR para `main`
-- **Branch protection** — PRs obrigatorios, CI deve passar, squash merge only, force push bloqueado
-- **Deploy** — Railway faz deploy automatico apos merge na `main`
-
----
-
-## Links
-
-- [Historico de desenvolvimento](docs/HISTORY.md) — Registro completo das 8 fases de evolucao
-- [Roadmap](docs/ROADMAP.md) — Ideias futuras e possiveis melhorias
+**contatolucasmaclean@gmail.com**
 
 ---
 
