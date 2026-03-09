@@ -37,7 +37,7 @@ Preencha as variaveis conforme a tabela abaixo. O bot valida todas as obrigatori
 |----------|-------------|-----------|
 | `DISCORD_TOKEN` | Sim | Token do bot Discord |
 | `DISCORD_CLIENT_ID` | Sim | Application ID do bot |
-| `DISCORD_GUILD_ID` | Sim | ID do servidor Discord (restringe commands a uma guild) |
+| `DISCORD_GUILD_ID` | Producao | ID do servidor Discord (restringe commands a uma guild). Obrigatorio em producao, opcional em dev |
 | `DATABASE_URL` | Sim | Connection string PostgreSQL |
 | `ADMIN_ROLE_IDS` | Nao | IDs de cargos admin separados por virgula |
 | `OPS_WEBHOOK_URL` | Nao | Webhook Discord para alertas de ops (canal privado) |
