@@ -96,7 +96,7 @@ DMs automaticas em eventos do ciclo de vida do duelo. Se a DM falhar ou o jogado
 |---------|-----------|
 | **Input sanitization** | `sanitizeText` neutraliza @everyone/@here injection em inputs de texto |
 | **Score validation** | `validateScore` centraliza validacao de placar por formato (MD1: 1-0, MD3: 2-0 ou 2-1) |
-| **Transaction timeout** | Timeout explicito (10s) em todas as `$transaction` do Prisma |
+| **Transaction timeout** | Timeout explicito (10s) nas interactive transactions do Prisma (`confirmAndApplyResult` e admin `fix-result`) |
 | **DB constraints** | CHECK para integridade de placar, CHECK para winnerId, indice unico parcial para season ativa |
 | **Optimistic locking** | Todas as transicoes de estado usam `updateMany` com filtro de status |
 | **Transacao atomica** | `confirmAndApplyResult` encapsula confirmacao + stats numa unica transacao |
