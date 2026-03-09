@@ -61,7 +61,7 @@ Objetivo: migrar deploy do Railway para Fly.io com seguranca rigida e deploy aut
 - Seguranca rigida:
   - `FLY_API_TOKEN` (escopo deploy-only, validade 1 ano) como secret do repositorio GitHub
   - Deploy so acontece apos CI verde (lint + typecheck + tests)
-  - Action oficial `superfly/flyctl-setup-action@v2`
+  - Action oficial `superfly/flyctl-actions/setup-flyctl@master`
   - Build remoto: `fly deploy --remote-only`
 - PRs so rodam CI — deploy nunca acontece em PR ou dev
 

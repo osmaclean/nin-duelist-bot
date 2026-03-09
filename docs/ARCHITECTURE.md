@@ -155,7 +155,7 @@ PR aberto → CI (lint + typecheck + testes) → Review → Merge na main → De
 ### Deploy (`deploy.yml`)
 
 - Trigger: `workflow_run` — dispara quando CI completa com sucesso na `main`
-- Usa `superfly/flyctl-setup-action@v2` + `fly deploy --remote-only`
+- Usa `superfly/flyctl-actions/setup-flyctl@master` + `fly deploy --remote-only`
 - `FLY_API_TOKEN` (escopo deploy-only) como secret do repositorio GitHub
 - Build remoto no Fly.io (nunca expoe Docker local)
 - PRs nunca disparam deploy — apenas CI
