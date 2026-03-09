@@ -245,11 +245,34 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 - `/admin season repair <id>` — recalcula `PlayerSeason` a partir dos duelos confirmados
 
 ### 8.5 Manutencao de migrations
-- `migration_phase5.sql` tornado idempotente (`ADD COLUMN IF NOT EXISTS`)
 - `witnessId` corrigido para NOT NULL + ON DELETE RESTRICT
-- `migration_phase8.sql`: drop witnessAccepted, CHECK constraints, indice parcial
 - Campo `witnessAccepted` removido do Prisma schema
-- Fluxo de migrations: `migration.sql` → `migration_phase5.sql` → `migration_phase8.sql`
+- `migration.sql` reescrito como schema completo do estado atual (arquivo unico)
+- Migrations incrementais (`migration_phase5.sql`, `migration_phase8.sql`) removidas — consolidadas no schema principal
+
+---
+
+## Fase 9 — Migracao para Fly.io
+
+Objetivo: migrar deploy do Railway para Fly.io com seguranca rigida e deploy automatico.
+
+### 9.1 Setup e configuracao
+- App `ninduelist` criado no Fly.io (regiao `gru` — Sao Paulo)
+- `fly.toml` configurado: single machine, health check HTTP, sem auto-stop
+- 6 secrets configurados via `fly secrets set` (zero secrets no repo)
+
+### 9.2 Deploy automatico
+- Workflow `deploy.yml` (GitHub Actions): dispara apos CI passar na `main`
+- Action `superfly/flyctl-actions/setup-flyctl@master` + `fly deploy --remote-only`
+- `FLY_API_TOKEN` com escopo deploy-only como secret do repositorio GitHub
+- Validado end-to-end: PR merged → CI passou → deploy automatico no Fly.io
+
+### 9.3 Descomissionamento e reorganizacao
+- Railway deletado (projeto inteiro removido)
+- README reescrito como vitrine do produto (zero detalhes tecnicos internos)
+- Documentacao separada: `SETUP.md` (guia de instalacao), `ARCHITECTURE.md` (referencia tecnica)
+- `migration.sql` consolidado como schema completo (migrations incrementais removidas)
+- Decisao de produto: bot de acesso restrito, `DISCORD_GUILD_ID` setado em producao
 
 ---
 

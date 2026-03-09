@@ -2,7 +2,7 @@
 
 Ideias futuras e possiveis melhorias. Nenhuma tem compromisso de prazo.
 
-Para o historico completo de todas as fases implementadas (1-8), veja [`HISTORY.md`](HISTORY.md).
+Para o historico completo de todas as fases implementadas (1-9), veja [`HISTORY.md`](HISTORY.md).
 
 ---
 
@@ -52,7 +52,7 @@ Objetivo: migrar deploy do Railway para Fly.io com seguranca rigida e deploy aut
   - Jobs registrados (expire-duels, season-check)
   - Health check passando
 - Machine duplicada destruida (Fly criou 2 por padrao, corrigido para 1)
-- Pendente: testar comando no Discord e monitorar estabilidade
+- Comandos testados no Discord — bot respondendo via Fly.io
 
 ### 9.5 Deploy automatico via GitHub Actions ✅
 
@@ -64,12 +64,13 @@ Objetivo: migrar deploy do Railway para Fly.io com seguranca rigida e deploy aut
   - Action oficial `superfly/flyctl-actions/setup-flyctl@master`
   - Build remoto: `fly deploy --remote-only`
 - PRs so rodam CI — deploy nunca acontece em PR ou dev
+- Validado em producao: PR merged → CI passou → deploy disparou com sucesso
 
 ### 9.6 Descomissionar Railway ✅
 
 - Projeto deletado do Railway (incidente ativo no momento da migracao)
 - Bot validado no Fly.io: comandos respondendo no Discord
-- Pendente: atualizar README.md e HISTORY.md com referencias atualizadas
+- README.md e HISTORY.md atualizados com referencias ao Fly.io
 
 ### Criterios de seguranca (nao-negociaveis)
 
