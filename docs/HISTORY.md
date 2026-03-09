@@ -207,7 +207,7 @@ Objetivo: saber o que esta acontecendo em producao sem cavar logs manualmente.
 
 ### 7.1 Monitoramento de saude
 - Endpoint HTTP `/health` (status do bot, ultimo ciclo dos jobs, uptime, metricas de notificacoes)
-- Health check para Railway (200 ok / 503 degraded)
+- Health check HTTP (200 ok / 503 degraded) — usado pelo Fly.io para monitorar o container
 
 ### 7.2 Alertas
 - Webhook Discord para canal privado de ops (`OPS_WEBHOOK_URL`): alertas de erros criticos
@@ -286,7 +286,7 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 - **Notificacoes:** DM com fallback para canal. Fire-and-forget.
 - **Admin:** Cargo via `ADMIN_ROLE_IDS` env var. Reason obrigatorio.
 - **Escopo:** 1-2 servidores Discord, < 200 jogadores ativos.
-- **Infra:** Supabase free tier, deploy automatico na Railway (push → main → deploy).
+- **Infra:** Supabase free tier, deploy automatico no Fly.io (push → main → deploy).
 - **CI/CD:** GitHub Actions para testes e lint antes do deploy.
 - **Repositorio:** Publico no GitHub. Branch protection rules sem plano pago.
 - **Branch protection:** PRs obrigatorios, CI deve passar, squash merge only, force push bloqueado.
@@ -305,4 +305,6 @@ Objetivo: resolver custos compostos que acumulam complexidade silenciosamente.
 - **Alertas ops:** Webhook Discord para canal privado. Dedup automatico.
 - **Tipos discriminados de estados:** Descartado. Over-engineering para a escala.
 - **Outbox de notificacoes:** Descartado. Fire-and-forget suficiente.
-- **Hardening multi-instancia:** Descartado. Instancia unica no Railway.
+- **Hardening multi-instancia:** Descartado. Instancia unica.
+- **Distribuicao do bot:** Acesso restrito. Novos servidores apenas mediante contato por e-mail com os socios. `DISCORD_GUILD_ID` setado em producao.
+- **Infra de deploy:** Migrado de Railway para Fly.io (regiao `gru` — Sao Paulo). Supabase mantido como banco.
