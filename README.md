@@ -39,6 +39,7 @@ Nao existe comando de registro. Jogadores sao cadastrados automaticamente na pri
 | **Recordes** | Maior streak, melhor win rate (minimo 5 jogos), mais duelos |
 | **MVP** | Top 3 jogadores da season com destaque para Peak Streak |
 | **Season** | Status da season atual com top 3 parcial |
+| **Help** | Guia rapido com comandos, fluxo e link para docs oficiais |
 
 ### Admin
 
@@ -224,6 +225,12 @@ Exibe o status da season atual. Resposta ephemeral.
 - Nome e numero da season, datas de inicio/termino, dias restantes
 - Total de duelos e jogadores ativos
 - Top 3 parcial com pontos e V/D
+
+---
+
+#### `/help`
+
+Exibe um guia rapido do bot com comandos agrupados, fluxo de duelo, regras e link para a documentacao oficial. Resposta ephemeral.
 
 ---
 

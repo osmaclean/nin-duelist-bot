@@ -126,7 +126,7 @@ npm test
 npm run test:watch
 ```
 
-55 arquivos de teste, 380 testes. Co-localizados com o codigo fonte (`*.test.ts`), usando mocks do Vitest. Nenhuma dependencia de banco real nos testes.
+56 arquivos de teste, 381 testes. Co-localizados com o codigo fonte (`*.test.ts`), usando mocks do Vitest. Nenhuma dependencia de banco real nos testes.
 
 ### Lint e formatacao
 

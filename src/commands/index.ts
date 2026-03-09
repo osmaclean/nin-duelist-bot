@@ -11,6 +11,7 @@ import { handleActivityCommand } from './activity';
 import { handleRecordsCommand } from './records';
 import { handleSettingsCommand } from './settings';
 import { handleSeasonCommand } from './season';
+import { handleHelpCommand } from './help';
 
 export const commandHandlers: Record<string, (i: ChatInputCommandInteraction) => Promise<void>> = {
   duel: handleDuelCommand,
@@ -25,4 +26,5 @@ export const commandHandlers: Record<string, (i: ChatInputCommandInteraction) =>
   records: handleRecordsCommand,
   settings: handleSettingsCommand,
   season: handleSeasonCommand,
+  help: handleHelpCommand,
 };
