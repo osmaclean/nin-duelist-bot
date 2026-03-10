@@ -6,7 +6,6 @@ import {
   getActiveSeason,
   getSeasonStatus,
   getSeasonPodium,
-  adminEndSeason,
   adminCreateSeason,
 } from './season.service';
 import { SEASON_DURATION_DAYS } from '../config';
@@ -227,22 +226,20 @@ describe('season.service', () => {
     });
   });
 
-  describe('adminEndSeason', () => {
-    it('should cancel active duels and close season', async () => {
-      (prisma.duel.updateMany as any).mockResolvedValue({ count: 2 });
-      (prisma.playerSeason.findFirst as any).mockResolvedValue({ playerId: 5 });
-      (prisma.season.update as any).mockResolvedValue({});
+  it('closeSeason should work with admin trigger', async () => {
+    (prisma.duel.updateMany as any).mockResolvedValue({ count: 2 });
+    (prisma.playerSeason.findFirst as any).mockResolvedValue({ playerId: 5 });
+    (prisma.season.update as any).mockResolvedValue({});
 
-      await adminEndSeason(3);
+    await closeSeason(3, 'admin');
 
-      expect(prisma.duel.updateMany).toHaveBeenCalledWith({
-        where: { seasonId: 3, status: { notIn: ['CONFIRMED', 'CANCELLED', 'EXPIRED'] } },
-        data: { status: 'CANCELLED' },
-      });
-      expect(prisma.season.update).toHaveBeenCalledWith({
-        where: { id: 3 },
-        data: { active: false, championId: 5 },
-      });
+    expect(prisma.duel.updateMany).toHaveBeenCalledWith({
+      where: { seasonId: 3, status: { notIn: ['CONFIRMED', 'CANCELLED', 'EXPIRED'] } },
+      data: { status: 'CANCELLED' },
+    });
+    expect(prisma.season.update).toHaveBeenCalledWith({
+      where: { id: 3 },
+      data: { active: false, championId: 5 },
     });
   });
 

@@ -121,13 +121,13 @@ export async function cancelDuel(duelId: number) {
 }
 
 /** Admin: reopen a terminal duel back to IN_PROGRESS, clearing result data */
-export async function reopenDuel(duelId: number) {
+export async function reopenDuel(duelId: number, tx: TxClient = prisma) {
   return transitionDuel(duelId, ['CONFIRMED', 'CANCELLED', 'EXPIRED'], {
     status: 'IN_PROGRESS',
     winnerId: null,
     scoreWinner: null,
     scoreLoser: null,
-  });
+  }, tx);
 }
 
 /** Admin: force a duel to EXPIRED regardless of current non-terminal status */

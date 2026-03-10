@@ -53,9 +53,18 @@ export function startSeasonCheckJob(client: Client) {
   clientRef = client;
   registerJob('season-check', SEASON_CHECK_INTERVAL_MS);
 
+  let running = false;
+
   function scheduleNext() {
     setTimeout(async () => {
-      await runSeasonCycle();
+      if (!running) {
+        running = true;
+        try {
+          await runSeasonCycle();
+        } finally {
+          running = false;
+        }
+      }
       scheduleNext();
     }, SEASON_CHECK_INTERVAL_MS);
   }

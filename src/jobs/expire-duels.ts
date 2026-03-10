@@ -141,9 +141,18 @@ export function startExpireDuelsJob(client: Client) {
   // Run immediately on startup to catch duels that expired while bot was down
   runExpireCycle(client).catch(() => {});
 
+  let running = false;
+
   function scheduleNext() {
     setTimeout(async () => {
-      await runExpireCycle(client);
+      if (!running) {
+        running = true;
+        try {
+          await runExpireCycle(client);
+        } finally {
+          running = false;
+        }
+      }
       scheduleNext();
     }, EXPIRE_CHECK_INTERVAL_MS);
   }

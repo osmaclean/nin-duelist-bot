@@ -1,4 +1,4 @@
-import { ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, TextChannel } from 'discord.js';
+import { ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } from 'discord.js';
 import { getDuelById, submitResult } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
@@ -41,8 +41,8 @@ export async function handlePickWinner(interaction: ButtonInteraction) {
     try {
       if (duel.channelId && duel.messageId) {
         const channel = await interaction.client.channels.fetch(duel.channelId);
-        if (channel && 'messages' in channel) {
-          const message = await (channel as TextChannel).messages.fetch(duel.messageId);
+        if (channel?.isTextBased() && 'messages' in channel) {
+          const message = await channel.messages.fetch(duel.messageId);
           const embed = buildDuelEmbed(updated);
           const components = buildDuelComponents(updated);
           await message.edit({ embeds: [embed], components });

@@ -1,4 +1,4 @@
-import { ButtonInteraction, ActionRowBuilder, ButtonBuilder } from 'discord.js';
+import { ButtonInteraction, ActionRowBuilder, ButtonBuilder, APIButtonComponent } from 'discord.js';
 import { getDuelById, DuelWithPlayers } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
@@ -43,7 +43,7 @@ function disableAllButtons(interaction: ButtonInteraction): void {
   const disabledRows = components.map((row) => {
     const newRow = new ActionRowBuilder<ButtonBuilder>();
     for (const component of row.components) {
-      newRow.addComponents(ButtonBuilder.from(component as any).setDisabled(true));
+      newRow.addComponents(ButtonBuilder.from(component as APIButtonComponent).setDisabled(true));
     }
     return newRow;
   });

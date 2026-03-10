@@ -53,7 +53,7 @@ export async function ensureActiveSeason() {
   return season;
 }
 
-export async function closeSeason(seasonId: number) {
+export async function closeSeason(seasonId: number, trigger: 'auto' | 'admin' = 'auto') {
   // Cancel all active (non-terminal) duels before closing
   const cancelled = await prisma.duel.updateMany({
     where: {
@@ -64,7 +64,7 @@ export async function closeSeason(seasonId: number) {
   });
 
   if (cancelled.count > 0) {
-    logger.info('Duelos ativos cancelados no fechamento de season', { seasonId, count: cancelled.count });
+    logger.info('Duelos ativos cancelados no fechamento de season', { seasonId, trigger, count: cancelled.count });
   }
 
   // Find champion (most points)
@@ -78,7 +78,7 @@ export async function closeSeason(seasonId: number) {
     data: { active: false, championId: topPlayer?.playerId ?? null },
   });
 
-  logger.info('Season encerrada', { seasonId, championId: topPlayer?.playerId ?? null });
+  logger.info('Season encerrada', { seasonId, trigger, championId: topPlayer?.playerId ?? null });
 }
 
 export async function getSeasonStatus(seasonId: number): Promise<SeasonWithStats | null> {
@@ -110,34 +110,6 @@ export async function getSeasonPodium(seasonId: number): Promise<PodiumEntry[]> 
     losses: ps.losses,
     peakStreak: ps.peakStreak,
   }));
-}
-
-export async function adminEndSeason(seasonId: number) {
-  // Cancel all active duels
-  const cancelled = await prisma.duel.updateMany({
-    where: {
-      seasonId,
-      status: { notIn: TERMINAL_STATUSES },
-    },
-    data: { status: 'CANCELLED' },
-  });
-
-  if (cancelled.count > 0) {
-    logger.info('Duelos ativos cancelados no fechamento admin de season', { seasonId, count: cancelled.count });
-  }
-
-  // Find champion
-  const topPlayer = await prisma.playerSeason.findFirst({
-    where: { seasonId },
-    orderBy: [{ points: 'desc' }, { wins: 'desc' }],
-  });
-
-  await prisma.season.update({
-    where: { id: seasonId },
-    data: { active: false, championId: topPlayer?.playerId ?? null },
-  });
-
-  logger.info('Season encerrada por admin', { seasonId, championId: topPlayer?.playerId ?? null });
 }
 
 export async function markSeasonEndingNotified(seasonId: number) {

@@ -1,4 +1,4 @@
-import { Client, TextChannel } from 'discord.js';
+import { Client } from 'discord.js';
 import { DuelWithPlayers } from '../services/duel.service';
 import { logger } from './logger';
 import { prisma } from './prisma';
@@ -53,8 +53,8 @@ async function sendDmWithFallback(
   if (channelId) {
     try {
       const channel = await client.channels.fetch(channelId);
-      if (channel && 'send' in channel) {
-        await (channel as TextChannel).send(`<@${discordId}> — ${message}`);
+      if (channel?.isTextBased() && 'send' in channel) {
+        await channel.send(`<@${discordId}> — ${message}`);
         trackChannelFallbackSent();
       }
     } catch {

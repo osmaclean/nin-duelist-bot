@@ -97,7 +97,7 @@ describe('lib/notifications', () => {
       const channelSend = vi.fn().mockResolvedValue(undefined);
       const client = {
         users: { fetch: vi.fn().mockRejectedValue(new Error('DM fail')) },
-        channels: { fetch: vi.fn().mockResolvedValue({ send: channelSend }) },
+        channels: { fetch: vi.fn().mockResolvedValue({ send: channelSend, isTextBased: () => true }) },
       } as any;
 
       await notifyWitnessValidation(client, makeDuel());
@@ -227,7 +227,7 @@ describe('lib/notifications', () => {
       const channelSend = vi.fn().mockResolvedValue(undefined);
       const client = {
         users: { fetch: vi.fn().mockResolvedValue({ send: vi.fn() }) },
-        channels: { fetch: vi.fn().mockResolvedValue({ send: channelSend }) },
+        channels: { fetch: vi.fn().mockResolvedValue({ send: channelSend, isTextBased: () => true }) },
       } as any;
 
       await notifyWitnessValidation(client, makeDuel());

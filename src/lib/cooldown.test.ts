@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { checkCooldown, getRemainingCooldown, clearAllCooldowns } from './cooldown';
+import { checkCooldown, getRemainingCooldown, clearAllCooldowns, cleanupExpiredEntries } from './cooldown';
 
 describe('lib/cooldown', () => {
   beforeEach(() => {
@@ -45,5 +45,35 @@ describe('lib/cooldown', () => {
     checkCooldown('user:1', 5000);
     vi.advanceTimersByTime(6000);
     expect(getRemainingCooldown('user:1', 5000)).toBe(0);
+  });
+
+  describe('cleanupExpiredEntries', () => {
+    it('should remove entries older than 1 hour', () => {
+      checkCooldown('old:1', 5000);
+      checkCooldown('old:2', 5000);
+      vi.advanceTimersByTime(60 * 60 * 1000 + 1); // 1h + 1ms
+      checkCooldown('recent:1', 5000);
+
+      const removed = cleanupExpiredEntries();
+
+      expect(removed).toBe(2);
+      // recent entry should still be blocked
+      expect(checkCooldown('recent:1', 5000)).toBe(false);
+      // old entries should allow usage again
+      expect(checkCooldown('old:1', 5000)).toBe(true);
+    });
+
+    it('should not remove entries younger than 1 hour', () => {
+      checkCooldown('young:1', 5000);
+      vi.advanceTimersByTime(30 * 60 * 1000); // 30min
+
+      const removed = cleanupExpiredEntries();
+
+      expect(removed).toBe(0);
+    });
+
+    it('should return 0 when map is empty', () => {
+      expect(cleanupExpiredEntries()).toBe(0);
+    });
   });
 });
