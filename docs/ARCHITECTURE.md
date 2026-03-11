@@ -16,7 +16,7 @@ Documentacao tecnica completa: stack, estrutura, decisoes arquiteturais, CI/CD, 
 | **Vitest** | Testes unitarios |
 | **Docker** | Container (Alpine multi-stage) |
 | **Fly.io** | Deploy em producao (regiao `gru` — Sao Paulo) |
-| **GitHub Actions** | CI/CD (lint, typecheck, testes, deploy) |
+| **GitHub Actions** | CI/CD (lint, typecheck, testes, deploy, backup) |
 
 ---
 
@@ -102,7 +102,7 @@ src/
 
 ### Tipagem
 
-- Zero `as any` no codigo de producao. Substituidos por tipos Discord.js (`TextChannel`, `GuildMemberRoleManager`).
+- Zero `as any` no codigo de producao. Type guards (`isTextChannel()`) substituem castings inseguros.
 - `duelWhere` em `history.service.ts` tipado como `Prisma.DuelWhereInput`.
 
 ---

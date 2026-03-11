@@ -8,7 +8,7 @@ Bot Discord para sistema de duelos ranqueados do **Nin Online**. Gerencia desafi
 
 ## O que e o NinDuelist
 
-Bot Discord para gerenciar duelos ranqueados no Nin Online. Jogadores usam slash commands para desafiar oponentes. Cada duelo exige uma testemunha obrigatoria que valida o resultado. A pontuacao e simples: +1 ponto por vitoria, -1 por derrota. Os duelos acontecem dentro de um embed unico atualizado continuamente com botoes dinamicos.
+Bot Discord para gerenciar duelos ranqueados no Nin Online. Jogadores usam slash commands para desafiar oponentes. Cada duelo exige uma testemunha obrigatoria que reporta e valida o resultado. A pontuacao e simples: +1 ponto por vitoria, -1 por derrota. Os duelos acontecem dentro de um embed unico atualizado continuamente com botoes dinamicos.
 
 Nao existe comando de registro. Jogadores sao cadastrados automaticamente na primeira vez que participam de um duelo (como desafiante, oponente ou testemunha). O username do Discord e mantido atualizado a cada interacao.
 
@@ -23,7 +23,7 @@ Nao existe comando de registro. Jogadores sao cadastrados automaticamente na pri
 | **Desafios 1v1** | Duelos no formato MD1 (Melhor de 1) ou MD3 (Melhor de 3) com testemunha obrigatoria |
 | **Pontuacao** | +1 ponto por vitoria, -1 por derrota. Streak atual e peak streak rastreados |
 | **Seasons automaticas** | Temporadas de 30 dias com criacao e fechamento automaticos. Campeao definido pelo ranking |
-| **Testemunha obrigatoria** | Terceiro jogador que valida o resultado. Pode confirmar ou rejeitar com um clique |
+| **Testemunha obrigatoria** | Terceiro jogador que reporta e valida o resultado. Jogadores so jogam |
 | **Anti-farm** | Mesmo par de jogadores so pode ter 1 duelo confirmado por dia (UTC) |
 | **Embed unico** | Cada duelo tem um embed persistente atualizado dinamicamente com botoes conforme o estado |
 
@@ -67,7 +67,8 @@ DMs automaticas em eventos do ciclo de vida do duelo. Se a DM falhar ou o jogado
 |--------|-------------|
 | Duelo criado | Oponente + testemunha |
 | Oponente aceitou (ACCEPTED) | Ambos duelistas |
-| Resultado enviado | Testemunha |
+| Duelo iniciado (IN_PROGRESS) | Testemunha + ambos duelistas |
+| Resultado reportado (AWAITING_VALIDATION) | Todos (3 participantes) |
 | Resultado confirmado | Ambos duelistas |
 | Resultado rejeitado | Ambos duelistas |
 | Duelo expirando (10 min restantes) | Oponente + testemunha |
@@ -381,7 +382,7 @@ O bot posta um embed amarelo com:
 - Status de aceitacao: `Oponente: Pendente`
 - Botoes: **Aceitar Duelo** (oponente) | **Cancelar**
 
-O oponente precisa aceitar para o duelo iniciar. A testemunha nao precisa aceitar — ela so participa na validacao do resultado. Se o oponente nao aceitar em **30 minutos**, o duelo expira automaticamente. Um aviso e enviado quando faltam **10 minutos**.
+O oponente precisa aceitar para o duelo iniciar. A testemunha nao precisa aceitar — ela participa apenas no reporte e validacao do resultado. Se o oponente nao aceitar em **30 minutos**, o duelo expira automaticamente. Um aviso e enviado quando faltam **10 minutos**.
 
 ### Fase 2 — Aceito (`ACCEPTED`)
 
@@ -392,24 +393,27 @@ Quando o oponente aceita, o embed fica azul:
 ### Fase 3 — Em Andamento (`IN_PROGRESS`)
 
 Apos iniciar, o embed fica laranja:
-- Botoes: **Enviar Resultado** | **Cancelar**
-- Qualquer duelista pode enviar o resultado
+- Botoes: **Reportar Resultado** | **Cancelar**
+- **Somente a testemunha** pode reportar o resultado. Jogadores so jogam
+- Apenas a testemunha pode cancelar nesta fase
 
-Ao clicar em **Enviar Resultado**, o bot mostra uma mensagem efemera com 2 botoes: os nomes dos jogadores. Clique em quem venceu.
+Ao clicar em **Reportar Resultado**, o bot mostra uma mensagem efemera com 2 botoes: os nomes dos jogadores. Clique em quem venceu.
 
 - **MD1:** O resultado e enviado automaticamente (1-0), sem necessidade de digitar placar.
 - **MD3:** Abre um modal pedindo apenas o placar (pontos do vencedor e perdedor). Placares validos: 2-0 ou 2-1.
 
+Ambos duelistas sao notificados que o resultado foi reportado.
+
 ### Fase 4 — Aguardando Validacao (`AWAITING_VALIDATION`)
 
-Apos enviar o resultado, o embed fica roxo:
-- Mostra o placar enviado
-- Botoes: **Confirmar Resultado** | **Rejeitar Resultado**
+Apos reportar o resultado, o embed fica roxo:
+- Mostra o placar reportado
+- Botoes: **Confirmar Resultado** | **Rejeitar Resultado** | **Cancelar**
 - **Somente a testemunha** pode interagir
 
 **Se a testemunha confirma:** O duelo e finalizado atomicamente — status, pontos e streak dos dois jogadores sao atualizados numa unica transacao.
 
-**Se a testemunha rejeita:** O duelo volta para `IN_PROGRESS` e o resultado e apagado. Os duelistas podem enviar um novo resultado.
+**Se a testemunha rejeita:** O duelo volta para `IN_PROGRESS` e o resultado e apagado. A testemunha podera reportar o resultado novamente.
 
 ### Fase 5 — Confirmado (`CONFIRMED`)
 
@@ -428,7 +432,10 @@ Embed fica verde, sem botoes:
 
 ### Cancelamento
 
-Qualquer participante (desafiante, oponente ou testemunha) pode cancelar o duelo nas fases `PROPOSED`, `ACCEPTED` ou `IN_PROGRESS`. Nenhuma pontuacao e aplicada.
+- **PROPOSED / ACCEPTED:** Apenas os duelistas (desafiante ou oponente) podem cancelar
+- **IN_PROGRESS / AWAITING_VALIDATION:** Apenas a testemunha pode cancelar
+
+Nenhuma pontuacao e aplicada ao cancelar.
 
 ### Diagrama de Estados
 
@@ -439,7 +446,7 @@ Qualquer participante (desafiante, oponente ou testemunha) pode cancelar o duelo
 PROPOSED --> ACCEPTED --> IN_PROGRESS --> AWAITING_VALIDATION --> CONFIRMED
     |            |              |                |
     |            |              |                |
-    |            +--------------+                |
+    |            +--------------+----------------+
     |                   |              (rejeicao volta
     |                   |               para IN_PROGRESS)
     |                   v
@@ -480,6 +487,7 @@ Para evitar abuso de pontuacao: **o mesmo par de jogadores so pode ter 1 duelo c
 | [Setup](docs/SETUP.md) | Guia de instalacao, configuracao e deploy |
 | [Arquitetura](docs/ARCHITECTURE.md) | Stack, estrutura, decisoes tecnicas, CI/CD, hardening |
 | [Historico](docs/HISTORY.md) | Registro completo das fases de desenvolvimento |
+| [Backup](docs/BACKUP.md) | Backup e restore do banco de dados |
 | [Roadmap](docs/ROADMAP.md) | Ideias futuras e possiveis melhorias |
 
 ---
