@@ -363,6 +363,19 @@ Objetivo: corrigir fluxo de duelos em producao — permissoes, papeis e notifica
 - Todos os handlers ja explicam POR QUE o clique foi rejeitado (padronizado nas fases 12.2-12.5)
 - Revisao completa confirmou consistencia em todos os 8 button handlers + 1 modal handler
 
+### 12.8 — Fix: feedback da testemunha e logging de embed
+- Mensagem ephemeral apos reportar resultado corrigida: "Aguardando validação da testemunha" → "Confirme ou rejeite o resultado no embed do duelo" (testemunha é quem vê essa mensagem)
+- Catch blocks silenciosos em `pick-winner.ts` e `submit-score.ts` agora logam `logger.warn` com duelId, channelId, messageId e erro (diagnostico de falhas de embed)
+- `submit-score.ts` (MD3): adicionado `editReply` com feedback para a testemunha (antes nao havia resposta apos modal)
+- DM da testemunha (`notifyWitnessValidation`) ajustada: "Precisa da sua validação!" → "Confirme ou rejeite o resultado no canal do duelo"
+
+### 12.9 — Empates no ranking e legibilidade de pontos negativos
+- Ranking com empates reais: jogadores com mesmos pontos, vitorias e peak streak compartilham a mesma posicao
+- Proximo jogador pula posicao (ex: 1, 1, 3 — sem 2)
+- Criterios de desempate: pontos > vitorias > peak streak (mesmo criterio de `getPlayerRank`)
+- Aplicado em `/rank` e `/mvp`
+- Separador de pontos nos embeds mudou de `—` (em dash) para `•` (bullet) para evitar "— -2pts"
+
 ---
 
 ## Problemas Conhecidos (todos resolvidos)
@@ -391,6 +404,8 @@ Objetivo: corrigir fluxo de duelos em producao — permissoes, papeis e notifica
 | 20 | Sem backup do banco de dados (Supabase Free) | Fase 11.6 |
 | 21 | Duelistas nao notificados quando resultado e reportado | Fase 12.6 |
 | 22 | Mensagens de rejeicao genericas em AWAITING_VALIDATION | Fase 12.7 |
+| 23 | Testemunha via "Aguardando validação da testemunha" apos ela mesma reportar | Fase 12.8 |
+| 24 | Ranking sequencial ignorava empates + legibilidade ruim de pontos negativos | Fase 12.9 |
 
 ---
 
@@ -430,3 +445,4 @@ Objetivo: corrigir fluxo de duelos em producao — permissoes, papeis e notifica
 - **Cancelamento por papel:** PROPOSED/ACCEPTED: duelistas cancelam. IN_PROGRESS/AWAITING_VALIDATION: apenas testemunha cancela.
 - **Notificação de resultado:** Duelistas são notificados quando resultado é reportado (AWAITING_VALIDATION). Mensagens de rejeição e reopen referenciam testemunha como quem reporta.
 - **Backup:** pg_dump diário criptografado via GitHub Actions. GitHub Artifacts com 90 dias de retenção. Repo público exige criptografia.
+- **Ranking com empates:** Jogadores com mesmos pontos/wins/peakStreak compartilham posição. Próximo pula (1,1,3). Sem desempate por data.
