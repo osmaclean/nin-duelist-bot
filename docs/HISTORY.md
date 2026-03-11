@@ -291,7 +291,28 @@ Objetivo: facilitar onboarding de novos jogadores com guia rapido acessivel dire
 
 ---
 
-## Fase 11 — Saude tecnica e dividas (parcial)
+## Fase 11 — Saude tecnica e dividas
+
+Objetivo: correcoes de integridade, limpeza de codigo e higiene tecnica.
+
+### 11.1 — Fix: reverseResult fora de transacao no admin reopen
+- `reverseResult` + `reopenDuel` envolvidos numa unica `$transaction` em `admin.ts`
+- Antes: se reverse funcionava mas reopen falhava, stats ficavam inconsistentes
+
+### 11.2 — Unificar closeSeason e adminEndSeason
+- Logica duplicada extraida para funcao unica `closeSeason(seasonId, trigger: 'auto' | 'admin')`
+- `adminEndSeason` removido do service
+
+### 11.3 — Cooldown cleanup periodico
+- `cleanupExpiredEntries()` remove entradas com mais de 1h a cada 10 min
+- Previne crescimento ilimitado do Map in-memory
+
+### 11.4 — Proteger jobs contra execucao sobreposta
+- Flag `isRunning` em `expire-duels` e `season-check`
+- Proximo ciclo so agenda apos o anterior finalizar
+
+### 11.5 — Substituir casting `as TextChannel` por type guard
+- Type guard `isTextChannel()` substituiu casting inseguro em `admin.ts`, `expire-duels.ts`, `notifications.ts`
 
 ### 11.6 — Backup do banco de dados
 - Supabase Free Plan nao inclui backups — risco real de perda de dados
@@ -390,7 +411,7 @@ Objetivo: corrigir fluxo de duelos em producao — permissoes, papeis e notifica
 - **Monetizacao:** Nao planejada. Projeto comunitario.
 - **Contribuidores:** Apenas os 2 socios.
 - **Cooldown in-memory:** Aceita perda no restart. Redis nao se justifica na escala atual.
-- **Testemunha:** Nao precisa aceitar para o duelo iniciar. So valida resultado.
+- **Testemunha:** Nao precisa aceitar para o duelo iniciar. Reporta e valida resultado.
 - **Resultado:** Botoes com nomes dos jogadores ("Quem venceu?"). MD1 auto-submete 1-0.
 - **Season admin:** Encerramento define top 3 automaticamente pelo ranking.
 - **Opt-out DMs:** Campo `dmEnabled` (Boolean) no Player. Sem JSON de preferencias.
