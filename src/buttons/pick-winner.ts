@@ -3,6 +3,7 @@ import { getDuelById, submitResult } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
 import { notifyWitnessValidation, notifyResultSubmitted } from '../lib/notifications';
+import { logger } from '../lib/logger';
 
 export async function handlePickWinner(interaction: ButtonInteraction) {
   const parts = interaction.customId.split(':');
@@ -54,12 +55,17 @@ export async function handlePickWinner(interaction: ButtonInteraction) {
           await message.edit({ embeds: [embed], components });
         }
       }
-    } catch {
-      // Channel or message may be deleted
+    } catch (err) {
+      logger.warn('Falha ao atualizar embed do duelo após reportar resultado', {
+        duelId: duel.id,
+        channelId: duel.channelId,
+        messageId: duel.messageId,
+        error: String(err),
+      });
     }
 
     await interaction.editReply({
-      content: 'Resultado enviado! Aguardando validação da testemunha.',
+      content: 'Resultado reportado! Confirme ou rejeite o resultado no embed do duelo.',
       components: [],
     });
 

@@ -4,6 +4,7 @@ import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
 import { notifyWitnessValidation, notifyResultSubmitted } from '../lib/notifications';
 import { validateScore } from '../lib/validation';
+import { logger } from '../lib/logger';
 
 export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction) {
   const parts = interaction.customId.split(':');
@@ -70,9 +71,19 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
         await message.edit({ embeds: [embed], components });
       }
     }
-  } catch {
-    // Channel or message may be deleted
+  } catch (err) {
+    logger.warn('Falha ao atualizar embed do duelo após reportar resultado', {
+      duelId: duel.id,
+      channelId: duel.channelId,
+      messageId: duel.messageId,
+      error: String(err),
+    });
   }
+
+  await interaction.editReply({
+    content: 'Resultado reportado! Confirme ou rejeite o resultado no embed do duelo.',
+    components: [],
+  });
 
   if (updated.status === 'AWAITING_VALIDATION') {
     notifyWitnessValidation(interaction.client, updated).catch(() => {});

@@ -138,6 +138,10 @@ describe('modals/submit-score', () => {
     await handleSubmitScoreModal(i);
 
     expect(submitResult).toHaveBeenCalledWith(10, 1, 2, 0);
+    expect(i.editReply).toHaveBeenCalledWith({
+      content: 'Resultado reportado! Confirme ou rejeite o resultado no embed do duelo.',
+      components: [],
+    });
     expect(notifyWitnessValidation).toHaveBeenCalledWith(i.client, updated);
     expect(notifyResultSubmitted).toHaveBeenCalledWith(i.client, updated);
   });
