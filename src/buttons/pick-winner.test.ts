@@ -102,7 +102,7 @@ describe('buttons/pick-winner', () => {
     expect(submitResult).toHaveBeenCalledWith(10, 1, 1, 0);
     expect(i.deferUpdate).toHaveBeenCalled();
     expect(i.editReply).toHaveBeenCalledWith({
-      content: 'Resultado enviado! Aguardando validação da testemunha.',
+      content: 'Resultado reportado! Confirme ou rejeite o resultado no embed do duelo.',
       components: [],
     });
   });

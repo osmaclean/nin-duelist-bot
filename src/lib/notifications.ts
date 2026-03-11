@@ -159,8 +159,8 @@ export async function notifyDuelStarted(client: Client, duel: DuelWithPlayers): 
 export async function notifyWitnessValidation(client: Client, duel: DuelWithPlayers): Promise<void> {
   const message =
     `**Duelo #${duel.id}** — <@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}>\n` +
-    `Placar enviado: **${duel.scoreWinner}-${duel.scoreLoser}**\n` +
-    `Precisa da sua validação! Vá até o canal do duelo para confirmar ou rejeitar.`;
+    `Placar reportado: **${duel.scoreWinner}-${duel.scoreLoser}**\n` +
+    `Confirme ou rejeite o resultado no canal do duelo.`;
 
   await sendWithCooldown(client, duel.witness.discordId, message, duel.id, duel.channelId, 'witness-validation');
   logger.info('DM de validação enviada para testemunha', { duelId: duel.id, witnessId: duel.witness.discordId });
