@@ -129,6 +129,31 @@ export async function notifyDuelAccepted(client: Client, duel: DuelWithPlayers):
 }
 
 /**
+ * Notifica testemunha e jogadores que o duelo começou (IN_PROGRESS).
+ * Testemunha: avisa que ela deve reportar o resultado.
+ * Jogadores: avisa que devem aguardar a testemunha.
+ */
+export async function notifyDuelStarted(client: Client, duel: DuelWithPlayers): Promise<void> {
+  const witnessMessage =
+    `**Duelo #${duel.id}** — O duelo começou!\n` +
+    `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}> (${duel.format})\n` +
+    `Você é a testemunha. Quando o duelo terminar, clique em "Reportar Resultado" para informar o vencedor.`;
+
+  const playerMessage =
+    `**Duelo #${duel.id}** — O duelo começou!\n` +
+    `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}> (${duel.format})\n` +
+    `Boa sorte! Ao final, a testemunha reportará o resultado.`;
+
+  await Promise.all([
+    sendWithCooldown(client, duel.witness.discordId, witnessMessage, duel.id, duel.channelId, 'duel-started'),
+    sendWithCooldown(client, duel.challenger.discordId, playerMessage, duel.id, duel.channelId, 'duel-started'),
+    sendWithCooldown(client, duel.opponent.discordId, playerMessage, duel.id, duel.channelId, 'duel-started'),
+  ]);
+
+  logger.info('Notificação de duelo iniciado enviada', { duelId: duel.id });
+}
+
+/**
  * Notifica a testemunha por DM que o resultado precisa de validação.
  */
 export async function notifyWitnessValidation(client: Client, duel: DuelWithPlayers): Promise<void> {

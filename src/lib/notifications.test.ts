@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   notifyDuelCreated,
   notifyDuelAccepted,
+  notifyDuelStarted,
   notifyWitnessValidation,
   notifyDuelConfirmed,
   notifyResultRejected,
@@ -166,6 +167,35 @@ describe('lib/notifications', () => {
       expect(client.users.fetch).toHaveBeenCalledWith('u2');
       expect(client._send).toHaveBeenCalledTimes(2);
       expect(client._send.mock.calls[0][0]).toContain('Oponente aceitou');
+    });
+  });
+
+  describe('notifyDuelStarted', () => {
+    it('should send DM to witness and both duelists', async () => {
+      const client = makeClient();
+      await notifyDuelStarted(client, makeDuel({ status: 'IN_PROGRESS' }));
+
+      expect(client.users.fetch).toHaveBeenCalledWith('u3');
+      expect(client.users.fetch).toHaveBeenCalledWith('u1');
+      expect(client.users.fetch).toHaveBeenCalledWith('u2');
+      expect(client._send).toHaveBeenCalledTimes(3);
+    });
+
+    it('should tell witness to report the result', async () => {
+      const client = makeClient();
+      await notifyDuelStarted(client, makeDuel({ status: 'IN_PROGRESS' }));
+
+      const witnessMsg = client._send.mock.calls[0][0];
+      expect(witnessMsg).toContain('testemunha');
+      expect(witnessMsg).toContain('Reportar Resultado');
+    });
+
+    it('should tell players to wait for witness', async () => {
+      const client = makeClient();
+      await notifyDuelStarted(client, makeDuel({ status: 'IN_PROGRESS' }));
+
+      const playerMsg = client._send.mock.calls[1][0];
+      expect(playerMsg).toContain('testemunha reportará o resultado');
     });
   });
 
@@ -383,6 +413,7 @@ describe('lib/notifications', () => {
 
     await expect(notifyDuelCreated(client, duel)).resolves.toBeUndefined();
     await expect(notifyDuelAccepted(client, duel)).resolves.toBeUndefined();
+    await expect(notifyDuelStarted(client, duel)).resolves.toBeUndefined();
     await expect(notifyDuelConfirmed(client, duel)).resolves.toBeUndefined();
     await expect(notifyResultRejected(client, duel)).resolves.toBeUndefined();
     await expect(notifyDuelExpiringSoon(client, duel)).resolves.toBeUndefined();

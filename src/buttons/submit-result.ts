@@ -5,8 +5,8 @@ export async function handleSubmitResult(interaction: ButtonInteraction) {
   const result = await validateDuelButton(interaction, {
     expectedStatus: 'IN_PROGRESS',
     permissionCheck: (i, duel) => {
-      const isParticipant = i.user.id === duel.challenger.discordId || i.user.id === duel.opponent.discordId;
-      return isParticipant ? null : 'Apenas os duelistas podem enviar o resultado.';
+      const isWitness = i.user.id === duel.witness.discordId;
+      return isWitness ? null : 'Apenas a testemunha pode reportar o resultado do duelo.';
     },
     errorMessage: 'Este duelo não está em andamento.',
   });

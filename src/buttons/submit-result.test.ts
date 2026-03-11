@@ -6,7 +6,7 @@ vi.mock('../services/duel.service', () => ({
   getDuelById: vi.fn(),
 }));
 
-function interaction(customId = 'submit-result:10', userId = 'u1') {
+function interaction(customId = 'submit-result:10', userId = 'u3') {
   return {
     customId,
     user: { id: userId },
@@ -43,12 +43,34 @@ describe('buttons/submit-result', () => {
     });
   });
 
-  it('should reject when user is not one of the duelists', async () => {
+  it('should reject when user is not the witness', async () => {
     (getDuelById as any).mockResolvedValue({
       id: 10,
       status: 'IN_PROGRESS',
       challenger: { discordId: 'u1', username: 'PlayerA' },
       opponent: { discordId: 'u2', username: 'PlayerB' },
+      witness: { discordId: 'u3' },
+      format: 'MD3',
+      challengerId: 1,
+      opponentId: 2,
+    });
+    const i = interaction('submit-result:10', 'u1');
+
+    await handleSubmitResult(i);
+
+    expect(i.reply).toHaveBeenCalledWith({
+      content: 'Apenas a testemunha pode reportar o resultado do duelo.',
+      ephemeral: true,
+    });
+  });
+
+  it('should reject when user is a random non-participant', async () => {
+    (getDuelById as any).mockResolvedValue({
+      id: 10,
+      status: 'IN_PROGRESS',
+      challenger: { discordId: 'u1', username: 'PlayerA' },
+      opponent: { discordId: 'u2', username: 'PlayerB' },
+      witness: { discordId: 'u3' },
       format: 'MD3',
       challengerId: 1,
       opponentId: 2,
@@ -58,22 +80,23 @@ describe('buttons/submit-result', () => {
     await handleSubmitResult(i);
 
     expect(i.reply).toHaveBeenCalledWith({
-      content: 'Apenas os duelistas podem enviar o resultado.',
+      content: 'Apenas a testemunha pode reportar o resultado do duelo.',
       ephemeral: true,
     });
   });
 
-  it('should reply with winner selection buttons', async () => {
+  it('should reply with winner selection buttons when witness clicks', async () => {
     (getDuelById as any).mockResolvedValue({
       id: 10,
       status: 'IN_PROGRESS',
       challenger: { discordId: 'u1', username: 'PlayerA' },
       opponent: { discordId: 'u2', username: 'PlayerB' },
+      witness: { discordId: 'u3' },
       format: 'MD3',
       challengerId: 1,
       opponentId: 2,
     });
-    const i = interaction();
+    const i = interaction('submit-result:10', 'u3');
 
     await handleSubmitResult(i);
 

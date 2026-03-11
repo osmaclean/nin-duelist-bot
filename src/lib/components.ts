@@ -40,7 +40,7 @@ export function buildDuelComponents(duel: DuelInfo): ActionRowBuilder<ButtonBuil
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId(`submit-result:${id}`)
-          .setLabel('Enviar Resultado')
+          .setLabel('Reportar Resultado')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId(`cancel-duel:${id}`).setLabel('Cancelar').setStyle(ButtonStyle.Danger),
       ),
@@ -58,6 +58,7 @@ export function buildDuelComponents(duel: DuelInfo): ActionRowBuilder<ButtonBuil
           .setCustomId(`reject-result:${id}`)
           .setLabel('Rejeitar Resultado')
           .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId(`cancel-duel:${id}`).setLabel('Cancelar').setStyle(ButtonStyle.Secondary),
       ),
     ];
   }

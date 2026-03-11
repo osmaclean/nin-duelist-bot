@@ -70,31 +70,32 @@ Fluxo de duelos esta quebrado em producao. Botoes aparecem para as pessoas errad
 - [x] Rejeitar com mensagem ephemeral clara: "Apenas a testemunha pode reportar o resultado"
 - [x] Atualizar testes
 
-### 12.3 — Novo fluxo: testemunha reporta resultado (Prioridade: Alta)
-- [ ] Hoje: qualquer jogador clica "Enviar Resultado" e escolhe vencedor/placar
-- [ ] Novo: apenas a testemunha reporta o resultado — jogadores so jogam
-- [ ] `submit-result.ts`: rejeitar se nao for a testemunha
-- [ ] Mensagem de rejeicao para jogadores: "Aguarde a testemunha reportar o resultado"
-- [ ] Atualizar notificacao DM para testemunha no IN_PROGRESS: avisar que ela deve reportar
-- [ ] Atualizar testes
+### 12.3 — Novo fluxo: testemunha reporta resultado (Prioridade: Alta) ✅
+- [x] Hoje: qualquer jogador clica "Enviar Resultado" e escolhe vencedor/placar
+- [x] Novo: apenas a testemunha reporta o resultado — jogadores so jogam
+- [x] `submit-result.ts`: rejeitar se nao for a testemunha
+- [x] Mensagem de rejeicao para jogadores: "Apenas a testemunha pode reportar o resultado do duelo."
+- [x] `notifyDuelStarted()`: notifica testemunha que deve reportar + jogadores que devem aguardar
+- [x] `start-duel.ts`: chama `notifyDuelStarted` apos transicao para IN_PROGRESS
+- [x] Atualizar testes
 
-### 12.4 — Restringir botao cancelar por status e papel (Prioridade: Alta)
-- [ ] PROPOSED: challenger e oponente podem cancelar
-- [ ] ACCEPTED: challenger e oponente podem cancelar
-- [ ] IN_PROGRESS: apenas testemunha pode cancelar (jogadores nao podem mais)
-- [ ] AWAITING_VALIDATION: apenas testemunha pode cancelar
-- [ ] Adicionar checks no handler `cancel-duel.ts`
-- [ ] Mensagem de rejeicao: "Apenas a testemunha ou admin pode cancelar duelos em andamento"
-- [ ] Atualizar testes
+### 12.4 — Restringir botao cancelar por status e papel (Prioridade: Alta) ✅
+- [x] PROPOSED: challenger e oponente podem cancelar
+- [x] ACCEPTED: challenger e oponente podem cancelar
+- [x] IN_PROGRESS: apenas testemunha pode cancelar (jogadores nao podem mais)
+- [x] AWAITING_VALIDATION: apenas testemunha pode cancelar
+- [x] Adicionar checks no handler `cancel-duel.ts`
+- [x] Mensagem de rejeicao por fase: "Apenas os duelistas podem cancelar nesta fase" / "Apenas a testemunha pode cancelar duelos em andamento"
+- [x] Atualizar testes
 
-### 12.5 — Botoes corretos por status no embed (Prioridade: Alta)
-- [ ] PROPOSED: "Aceitar Duelo" + "Cancelar Duelo" (handler ja valida quem clica)
-- [ ] ACCEPTED: "Iniciar Duelo" + "Cancelar Duelo" (handler ja valida)
-- [ ] IN_PROGRESS: "Reportar Resultado" + "Cancelar Duelo" (handler restringe a testemunha)
-- [ ] AWAITING_VALIDATION: "Confirmar Resultado" + "Rejeitar Resultado" + "Cancelar Duelo" (handler restringe a testemunha)
-- [ ] CONFIRMED/CANCELLED/EXPIRED: nenhum botao (ja funciona)
-- [ ] Revisar `buildDuelComponents()` para garantir botoes corretos por status
-- [ ] Atualizar testes de components
+### 12.5 — Botoes corretos por status no embed (Prioridade: Alta) ✅
+- [x] PROPOSED: "Aceitar Duelo" + "Cancelar" (handler ja valida quem clica)
+- [x] ACCEPTED: "Iniciar Duelo" + "Cancelar" (handler ja valida)
+- [x] IN_PROGRESS: "Reportar Resultado" + "Cancelar" (handler restringe a testemunha)
+- [x] AWAITING_VALIDATION: "Confirmar Resultado" + "Rejeitar Resultado" + "Cancelar" (handler restringe a testemunha)
+- [x] CONFIRMED/CANCELLED/EXPIRED: nenhum botao (ja funciona)
+- [x] Revisar `buildDuelComponents()` para garantir botoes corretos por status
+- [x] Atualizar testes de components
 
 ### 12.6 — Notificacoes DM ajustadas ao novo fluxo (Prioridade: Media)
 - [ ] IN_PROGRESS: notificar testemunha que ela deve reportar o resultado
