@@ -117,8 +117,8 @@ describe('lib/embeds', () => {
 
     expect(json.title).toBe('Ranking — Season 3');
     expect(json.footer?.text).toBe('Página 2/4');
-    expect(json.description).toContain('<@11> — 10pts | 6V 1D | Streak: 4 (max 5)');
-    expect(json.description).toContain('**22.** <@22> — 8pts | 5V 2D | Streak: 2 (max 3)');
+    expect(json.description).toContain('<@11> • 10pts | 6V 1D | Streak: 4 (max 5)');
+    expect(json.description).toContain('**22.** <@22> • 8pts | 5V 2D | Streak: 2 (max 3)');
   });
 
   it('buildRankEmbed should render top-3 medals', () => {
@@ -143,6 +143,61 @@ describe('lib/embeds', () => {
     expect(embed.description).toBe('Nenhum jogador nesta season ainda.');
   });
 
+  it('buildRankEmbed should assign same rank to tied players', () => {
+    const entries = [
+      { player: { discordId: '1' } as any, points: 5, wins: 3, losses: 2, streak: 1, peakStreak: 2 },
+      { player: { discordId: '2' } as any, points: 5, wins: 3, losses: 2, streak: 0, peakStreak: 2 },
+      { player: { discordId: '3' } as any, points: 3, wins: 2, losses: 1, streak: 0, peakStreak: 1 },
+    ];
+
+    const embed = buildRankEmbed(1, entries, 1, 1, 1).toJSON();
+
+    // Both #1 and #2 should have gold medal (tied at rank 1)
+    expect(embed.description).toContain('\u{1F947} <@1>');
+    expect(embed.description).toContain('\u{1F947} <@2>');
+    // #3 should be rank 3 (skips 2)
+    expect(embed.description).toContain('\u{1F949} <@3>');
+  });
+
+  it('buildRankEmbed should not tie players with same points but different wins', () => {
+    const entries = [
+      { player: { discordId: '1' } as any, points: 5, wins: 4, losses: 1, streak: 0, peakStreak: 2 },
+      { player: { discordId: '2' } as any, points: 5, wins: 3, losses: 2, streak: 0, peakStreak: 2 },
+    ];
+
+    const embed = buildRankEmbed(1, entries, 1, 1, 1).toJSON();
+
+    expect(embed.description).toContain('\u{1F947} <@1>');
+    expect(embed.description).toContain('\u{1F948} <@2>');
+  });
+
+  it('buildRankEmbed should display negative points cleanly', () => {
+    const entries = [
+      { player: { discordId: '1' } as any, points: -2, wins: 1, losses: 3, streak: 0, peakStreak: 1 },
+    ];
+
+    const embed = buildRankEmbed(1, entries, 1, 1, 1).toJSON();
+
+    expect(embed.description).toContain('• -2pts');
+    expect(embed.description).not.toContain('— -');
+  });
+
+  it('buildMvpEmbed should assign same medal to tied players', () => {
+    const entries = [
+      { player: { discordId: '1' } as any, points: 10, wins: 5, losses: 0, streak: 5, peakStreak: 5 },
+      { player: { discordId: '2' } as any, points: 10, wins: 5, losses: 0, streak: 3, peakStreak: 5 },
+      { player: { discordId: '3' } as any, points: 7, wins: 4, losses: 1, streak: 2, peakStreak: 3 },
+    ];
+
+    const embed = buildMvpEmbed(1, entries).toJSON();
+
+    // Both should have gold medal
+    expect(embed.description).toContain('\u{1F947} <@1>');
+    expect(embed.description).toContain('\u{1F947} <@2>');
+    // #3 skips to bronze
+    expect(embed.description).toContain('\u{1F949} <@3>');
+  });
+
   it('buildMvpEmbed should render top lines with medals and empty state', () => {
     const nonEmpty = buildMvpEmbed(9, [
       {
@@ -157,7 +212,7 @@ describe('lib/embeds', () => {
     const empty = buildMvpEmbed(9, []).toJSON();
 
     expect(nonEmpty.title).toBe('MVP — Season 9');
-    expect(nonEmpty.description).toContain('\u{1F947} <@99> — 20pts | 10V 0D | Peak Streak: 10');
+    expect(nonEmpty.description).toContain('\u{1F947} <@99> • 20pts | 10V 0D | Peak Streak: 10');
     expect(empty.description).toBe('Nenhum jogador nesta season ainda.');
   });
 
@@ -172,6 +227,6 @@ describe('lib/embeds', () => {
     }));
 
     const embed = buildMvpEmbed(2, entries).toJSON();
-    expect(embed.description).toContain('6. <@6> — 5pts | 5V 5D | Peak Streak: 0');
+    expect(embed.description).toContain('**6.** <@6> • 5pts | 5V 5D | Peak Streak: 0');
   });
 });

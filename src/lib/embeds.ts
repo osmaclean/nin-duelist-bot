@@ -57,6 +57,18 @@ export function buildDuelEmbed(duel: DuelWithPlayers): EmbedBuilder {
   return embed;
 }
 
+function isTied(
+  a: { points: number; wins: number; peakStreak: number },
+  b: { points: number; wins: number; peakStreak: number },
+): boolean {
+  return a.points === b.points && a.wins === b.wins && a.peakStreak === b.peakStreak;
+}
+
+function rankLabel(rank: number): string {
+  if (rank <= 3) return ['\u{1F947}', '\u{1F948}', '\u{1F949}'][rank - 1];
+  return `**${rank}.**`;
+}
+
 export function buildRankEmbed(
   seasonNumber: number,
   entries: Array<{ player: Player; points: number; wins: number; losses: number; streak: number; peakStreak: number }>,
@@ -64,10 +76,12 @@ export function buildRankEmbed(
   totalPages: number,
   startRank: number,
 ) {
+  let currentRank = startRank;
   const lines = entries.map((e, i) => {
-    const rank = startRank + i;
-    const medal = rank <= 3 ? ['\u{1F947}', '\u{1F948}', '\u{1F949}'][rank - 1] : `**${rank}.**`;
-    return `${medal} <@${e.player.discordId}> — ${e.points}pts | ${e.wins}V ${e.losses}D | Streak: ${e.streak} (max ${e.peakStreak})`;
+    if (i > 0) {
+      currentRank = isTied(e, entries[i - 1]) ? currentRank : startRank + i;
+    }
+    return `${rankLabel(currentRank)} <@${e.player.discordId}> • ${e.points}pts | ${e.wins}V ${e.losses}D | Streak: ${e.streak} (max ${e.peakStreak})`;
   });
 
   return new EmbedBuilder()
@@ -81,9 +95,12 @@ export function buildMvpEmbed(
   seasonNumber: number,
   entries: Array<{ player: Player; points: number; wins: number; losses: number; streak: number; peakStreak: number }>,
 ) {
+  let currentRank = 1;
   const lines = entries.map((e, i) => {
-    const medal = ['\u{1F947}', '\u{1F948}', '\u{1F949}', '4.', '5.'][i] ?? `${i + 1}.`;
-    return `${medal} <@${e.player.discordId}> — ${e.points}pts | ${e.wins}V ${e.losses}D | Peak Streak: ${e.peakStreak}`;
+    if (i > 0) {
+      currentRank = isTied(e, entries[i - 1]) ? currentRank : i + 1;
+    }
+    return `${rankLabel(currentRank)} <@${e.player.discordId}> • ${e.points}pts | ${e.wins}V ${e.losses}D | Peak Streak: ${e.peakStreak}`;
   });
 
   return new EmbedBuilder()

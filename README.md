@@ -117,11 +117,13 @@ Exibe o ranking da season atual com 20 jogadores por pagina.
 
 **Exibicao:**
 ```
-1. @jogador1 — 15pts | 12V 3D | Streak: 4 (max 7)
-2. @jogador2 — 10pts | 8V 2D | Streak: 2 (max 5)
-3. @jogador3 — 8pts | 7V 1D | Streak: 1 (max 3)
-4. @jogador4 — 5pts | 5V 0D | Streak: 5 (max 5)
+🥇 @jogador1 • 15pts | 12V 3D | Streak: 4 (max 7)
+🥇 @jogador2 • 15pts | 10V 5D | Streak: 2 (max 5)
+🥉 @jogador3 • 8pts | 7V 1D | Streak: 1 (max 3)
+4. @jogador4 • 5pts | 5V 0D | Streak: 5 (max 5)
 ```
+
+Jogadores com mesmos pontos, vitorias e peak streak compartilham a mesma posicao. O proximo pula a posicao (ex: 1, 1, 3).
 
 Botoes **Anterior** / **Proxima** para navegar entre paginas.
 
