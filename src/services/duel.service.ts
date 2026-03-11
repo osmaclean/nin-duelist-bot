@@ -117,7 +117,7 @@ export async function expireDuel(duelId: number) {
 }
 
 export async function cancelDuel(duelId: number) {
-  return transitionDuel(duelId, ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS'], { status: 'CANCELLED' });
+  return transitionDuel(duelId, ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'AWAITING_VALIDATION'], { status: 'CANCELLED' });
 }
 
 /** Admin: reopen a terminal duel back to IN_PROGRESS, clearing result data */

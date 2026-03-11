@@ -16,11 +16,12 @@ vi.mock('../lib/notifications', () => ({
   notifyWitnessValidation: vi.fn().mockResolvedValue(undefined),
 }));
 
-function interaction(customId = 'pick-winner:10:1') {
+function interaction(customId = 'pick-winner:10:1', userId = 'w1') {
   const channelMessages = { fetch: vi.fn().mockResolvedValue({ edit: vi.fn() }) };
-  const channel = { messages: channelMessages };
+  const channel = { messages: channelMessages, isTextBased: () => true };
   return {
     customId,
+    user: { id: userId },
     client: {
       users: { fetch: vi.fn() },
       channels: { fetch: vi.fn().mockResolvedValue(channel) },
@@ -42,6 +43,7 @@ function duelBase(format = 'MD1' as string) {
     opponentId: 2,
     challenger: { discordId: 'u1', username: 'PlayerA' },
     opponent: { discordId: 'u2', username: 'PlayerB' },
+    witness: { discordId: 'w1' },
     channelId: 'ch1',
     messageId: 'msg1',
   };
@@ -67,6 +69,15 @@ describe('buttons/pick-winner', () => {
     await handlePickWinner(i);
 
     expect(i.reply).toHaveBeenCalledWith({ content: 'Este duelo não está em andamento.', ephemeral: true });
+  });
+
+  it('should reject when user is not the witness', async () => {
+    (getDuelById as any).mockResolvedValue(duelBase());
+    const i = interaction('pick-winner:10:1', 'u1');
+
+    await handlePickWinner(i);
+
+    expect(i.reply).toHaveBeenCalledWith({ content: 'Apenas a testemunha pode reportar o resultado.', ephemeral: true });
   });
 
   it('should reject when winnerId does not match players', async () => {

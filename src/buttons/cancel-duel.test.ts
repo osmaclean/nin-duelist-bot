@@ -101,6 +101,27 @@ describe('buttons/cancel-duel', () => {
     });
   });
 
+  it('should allow cancel in AWAITING_VALIDATION status', async () => {
+    (getDuelById as any).mockResolvedValue({
+      id: 10,
+      status: 'AWAITING_VALIDATION',
+      challenger: { discordId: 'u1' },
+      opponent: { discordId: 'u2' },
+      witness: { discordId: 'u3' },
+    });
+    (cancelDuel as any).mockResolvedValue({ id: 10, status: 'CANCELLED' });
+    (buildDuelEmbed as any).mockReturnValue({ embed: true });
+    const i = interaction();
+
+    await handleCancelDuel(i);
+
+    expect(cancelDuel).toHaveBeenCalledWith(10);
+    expect(i.editReply).toHaveBeenCalledWith({
+      embeds: [{ embed: true }],
+      components: [],
+    });
+  });
+
   it('should cancel duel and clear buttons on success', async () => {
     (getDuelById as any).mockResolvedValue({
       id: 10,

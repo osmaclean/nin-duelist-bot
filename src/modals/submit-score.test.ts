@@ -17,11 +17,12 @@ vi.mock('../lib/notifications', () => ({
   notifyWitnessValidation: vi.fn().mockResolvedValue(undefined),
 }));
 
-function modalInteraction(values: Record<string, string>, customId = 'submit-score:10:1') {
+function modalInteraction(values: Record<string, string>, customId = 'submit-score:10:1', userId = 'w1') {
   const channelMessages = { fetch: vi.fn().mockResolvedValue({ edit: vi.fn() }) };
-  const channel = { messages: channelMessages };
+  const channel = { messages: channelMessages, isTextBased: () => true };
   return {
     customId,
+    user: { id: userId },
     client: {
       users: { fetch: vi.fn() },
       channels: { fetch: vi.fn().mockResolvedValue(channel) },
@@ -45,6 +46,7 @@ function duelBase(extra: Record<string, unknown> = {}) {
     opponentId: 2,
     challenger: { discordId: '111' },
     opponent: { discordId: '222' },
+    witness: { discordId: 'w1' },
     channelId: 'ch1',
     messageId: 'msg1',
     ...extra,
@@ -72,6 +74,15 @@ describe('modals/submit-score', () => {
     await handleSubmitScoreModal(i);
 
     expect(i.reply).toHaveBeenCalledWith({ content: 'Este duelo não está em andamento.', ephemeral: true });
+  });
+
+  it('should reject when user is not the witness', async () => {
+    (getDuelById as any).mockResolvedValue(duelBase());
+    const i = modalInteraction({ 'score-winner': '2', 'score-loser': '1' }, 'submit-score:10:1', '111');
+
+    await handleSubmitScoreModal(i);
+
+    expect(i.reply).toHaveBeenCalledWith({ content: 'Apenas a testemunha pode reportar o resultado.', ephemeral: true });
   });
 
   it('should reject when winnerId does not match players', async () => {

@@ -204,6 +204,24 @@ describe('commands/admin', () => {
       expect(i.editReply).toHaveBeenCalledWith('Erro ao cancelar duelo #10.');
     });
 
+    it('should cancel duel in AWAITING_VALIDATION status', async () => {
+      (getDuelById as any).mockResolvedValue(makeDuel({ status: 'AWAITING_VALIDATION' }));
+      const cancelled = makeDuel({ status: 'CANCELLED' });
+      (cancelDuel as any).mockResolvedValue(cancelled);
+      const i = interaction('cancel');
+      await handleAdminCommand(i);
+
+      expect(cancelDuel).toHaveBeenCalledWith(10);
+      expect(logAdminAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'CANCEL_DUEL',
+          previousStatus: 'AWAITING_VALIDATION',
+          newStatus: 'CANCELLED',
+        }),
+      );
+      expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('cancelado com sucesso'));
+    });
+
     it('should cancel duel, log audit, notify duelists, and reply success', async () => {
       (getDuelById as any).mockResolvedValue(makeDuel());
       const cancelled = makeDuel({ status: 'CANCELLED' });

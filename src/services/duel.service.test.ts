@@ -253,14 +253,14 @@ describe('duel.service', () => {
     expect(result).toBeNull();
   });
 
-  it('cancelDuel should transition from PROPOSED/ACCEPTED/IN_PROGRESS', async () => {
+  it('cancelDuel should transition from PROPOSED/ACCEPTED/IN_PROGRESS/AWAITING_VALIDATION', async () => {
     (prisma.duel.updateMany as any).mockResolvedValue({ count: 1 });
     (prisma.duel.findUnique as any).mockResolvedValue(mockDuel('CANCELLED'));
 
     const result = await cancelDuel(duelId);
 
     expect(prisma.duel.updateMany).toHaveBeenCalledWith({
-      where: { id: duelId, status: { in: ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS'] } },
+      where: { id: duelId, status: { in: ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'AWAITING_VALIDATION'] } },
       data: { status: 'CANCELLED' },
     });
     expect(result?.status).toBe('CANCELLED');

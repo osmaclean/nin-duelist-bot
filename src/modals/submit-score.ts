@@ -22,6 +22,12 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
     return;
   }
 
+  // Only the witness can report results
+  if (interaction.user.id !== duel.witness.discordId) {
+    await interaction.reply({ content: 'Apenas a testemunha pode reportar o resultado.', ephemeral: true });
+    return;
+  }
+
   // Validate winnerId
   if (winnerId !== duel.challengerId && winnerId !== duel.opponentId) {
     await interaction.reply({ content: 'Vencedor inválido.', ephemeral: true });
