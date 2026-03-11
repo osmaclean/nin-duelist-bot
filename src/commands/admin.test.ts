@@ -8,7 +8,7 @@ import {
   getActiveSeason,
   getSeasonStatus,
   getSeasonPodium,
-  adminEndSeason,
+  closeSeason,
   adminCreateSeason,
 } from '../services/season.service';
 import { searchDuelsByPlayer, searchDuelsByStatus } from '../services/search.service';
@@ -49,7 +49,7 @@ vi.mock('../services/season.service', () => ({
   getActiveSeason: vi.fn(),
   getSeasonStatus: vi.fn(),
   getSeasonPodium: vi.fn(),
-  adminEndSeason: vi.fn().mockResolvedValue(undefined),
+  closeSeason: vi.fn().mockResolvedValue(undefined),
   adminCreateSeason: vi.fn(),
   repairSeasonStats: vi.fn(),
 }));
@@ -204,6 +204,24 @@ describe('commands/admin', () => {
       expect(i.editReply).toHaveBeenCalledWith('Erro ao cancelar duelo #10.');
     });
 
+    it('should cancel duel in AWAITING_VALIDATION status', async () => {
+      (getDuelById as any).mockResolvedValue(makeDuel({ status: 'AWAITING_VALIDATION' }));
+      const cancelled = makeDuel({ status: 'CANCELLED' });
+      (cancelDuel as any).mockResolvedValue(cancelled);
+      const i = interaction('cancel');
+      await handleAdminCommand(i);
+
+      expect(cancelDuel).toHaveBeenCalledWith(10);
+      expect(logAdminAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'CANCEL_DUEL',
+          previousStatus: 'AWAITING_VALIDATION',
+          newStatus: 'CANCELLED',
+        }),
+      );
+      expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('cancelado com sucesso'));
+    });
+
     it('should cancel duel, log audit, notify duelists, and reply success', async () => {
       (getDuelById as any).mockResolvedValue(makeDuel());
       const cancelled = makeDuel({ status: 'CANCELLED' });
@@ -227,7 +245,7 @@ describe('commands/admin', () => {
     it('should update original message when channelId and messageId exist', async () => {
       const messageEdit = vi.fn().mockResolvedValue(undefined);
       const messageFetch = vi.fn().mockResolvedValue({ edit: messageEdit });
-      const channelFetch = vi.fn().mockResolvedValue({ messages: { fetch: messageFetch } });
+      const channelFetch = vi.fn().mockResolvedValue({ messages: { fetch: messageFetch }, isTextBased: () => true });
 
       (getDuelById as any).mockResolvedValue(makeDuel({ channelId: 'ch1', messageId: 'msg1' }));
       (cancelDuel as any).mockResolvedValue(makeDuel({ status: 'CANCELLED' }));
@@ -259,17 +277,24 @@ describe('commands/admin', () => {
       expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('não está em estado terminal'));
     });
 
-    it('should reverse stats when reopening a CONFIRMED duel and notify', async () => {
+    it('should reverse stats and reopen in a single transaction for CONFIRMED duel', async () => {
       (getDuelById as any).mockResolvedValue(
         makeDuel({ status: 'CONFIRMED', winnerId: 1, challengerId: 1, opponentId: 2, seasonId: 1 }),
       );
       const reopened = makeDuel({ status: 'IN_PROGRESS' });
       (reopenDuel as any).mockResolvedValue(reopened);
+
+      const { prisma: mockPrisma } = await import('../lib/prisma');
+      (mockPrisma.$transaction as any).mockImplementation(async (fn: any) => {
+        return fn(mockPrisma);
+      });
+
       const i = interaction('reopen');
       await handleAdminCommand(i);
 
-      expect(reverseResult).toHaveBeenCalledWith(1, 2, 1);
-      expect(reopenDuel).toHaveBeenCalledWith(10);
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect(reverseResult).toHaveBeenCalledWith(1, 2, 1, expect.anything());
+      expect(reopenDuel).toHaveBeenCalledWith(10, expect.anything());
       expect(logAdminAction).toHaveBeenCalledWith(expect.objectContaining({ action: 'REOPEN_DUEL' }));
       expect(notifyAdminReopen).toHaveBeenCalledWith(i.client, reopened, 'Motivo teste');
       expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('reaberto para IN_PROGRESS'));
@@ -278,11 +303,17 @@ describe('commands/admin', () => {
     it('should not reverse stats when reopening a CANCELLED duel', async () => {
       (getDuelById as any).mockResolvedValue(makeDuel({ status: 'CANCELLED' }));
       (reopenDuel as any).mockResolvedValue(makeDuel({ status: 'IN_PROGRESS' }));
+
+      const { prisma: mockPrisma } = await import('../lib/prisma');
+      (mockPrisma.$transaction as any).mockImplementation(async (fn: any) => {
+        return fn(mockPrisma);
+      });
+
       const i = interaction('reopen');
       await handleAdminCommand(i);
 
       expect(reverseResult).not.toHaveBeenCalled();
-      expect(reopenDuel).toHaveBeenCalledWith(10);
+      expect(reopenDuel).toHaveBeenCalledWith(10, expect.anything());
     });
 
     it('should reply error when reopenDuel fails', async () => {
@@ -488,10 +519,10 @@ describe('commands/admin', () => {
       ]);
 
       const channelSend = vi.fn().mockResolvedValue(undefined);
-      const i = interaction('end', { _group: 'season', _channel: { send: channelSend } });
+      const i = interaction('end', { _group: 'season', _channel: { send: channelSend, isTextBased: () => true } });
       await handleAdminCommand(i);
 
-      expect(adminEndSeason).toHaveBeenCalledWith(5);
+      expect(closeSeason).toHaveBeenCalledWith(5, 'admin');
       expect(logAdminAction).toHaveBeenCalledWith(expect.objectContaining({ action: 'END_SEASON' }));
       expect(channelSend).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }));
       expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('encerrada com sucesso'));
@@ -505,7 +536,7 @@ describe('commands/admin', () => {
       const i = interaction('end', { _group: 'season' });
       await handleAdminCommand(i);
 
-      expect(adminEndSeason).toHaveBeenCalledWith(5);
+      expect(closeSeason).toHaveBeenCalledWith(5, 'admin');
       expect(i.editReply).toHaveBeenCalledWith(expect.stringContaining('encerrada com sucesso'));
     });
   });

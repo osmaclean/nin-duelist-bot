@@ -152,6 +152,13 @@ PR aberto → CI (lint + typecheck + testes) → Review → Merge na main → De
 - Cobertura minima: 80% lines/functions, 70% branches
 - Env vars de CI: valores dummy (testes usam mocks, sem banco real)
 
+### Backup (`backup.yml`)
+
+- Trigger: `schedule` (cron diário 03:00 UTC) + `workflow_dispatch` (manual)
+- `pg_dump` → `gzip` → criptografia AES-256-CBC → GitHub Artifact (90 dias)
+- Secrets: `DATABASE_URL_BACKUP` (conexão direta Supabase) + `BACKUP_PASSPHRASE`
+- Documentação completa: [`BACKUP.md`](BACKUP.md)
+
 ### Deploy (`deploy.yml`)
 
 - Trigger: `workflow_run` — dispara quando CI completa com sucesso na `main`

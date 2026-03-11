@@ -30,14 +30,14 @@ describe('lib/components', () => {
     expect(buttonLabels(result)).toEqual(['Iniciar Duelo', 'Cancelar']);
   });
 
-  it('IN_PROGRESS shows submit + cancel', () => {
+  it('IN_PROGRESS shows report result + cancel', () => {
     const result = buildDuelComponents(duel('IN_PROGRESS'));
-    expect(buttonLabels(result)).toEqual(['Enviar Resultado', 'Cancelar']);
+    expect(buttonLabels(result)).toEqual(['Reportar Resultado', 'Cancelar']);
   });
 
-  it('AWAITING_VALIDATION shows confirm + reject', () => {
+  it('AWAITING_VALIDATION shows confirm + reject + cancel', () => {
     const result = buildDuelComponents(duel('AWAITING_VALIDATION'));
-    expect(buttonLabels(result)).toEqual(['Confirmar Resultado', 'Rejeitar Resultado']);
+    expect(buttonLabels(result)).toEqual(['Confirmar Resultado', 'Rejeitar Resultado', 'Cancelar']);
   });
 
   it('CONFIRMED returns no components', () => {

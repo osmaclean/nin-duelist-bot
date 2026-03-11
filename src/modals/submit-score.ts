@@ -1,8 +1,8 @@
-import { ModalSubmitInteraction, TextChannel } from 'discord.js';
+import { ModalSubmitInteraction } from 'discord.js';
 import { getDuelById, submitResult } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
-import { notifyWitnessValidation } from '../lib/notifications';
+import { notifyWitnessValidation, notifyResultSubmitted } from '../lib/notifications';
 import { validateScore } from '../lib/validation';
 
 export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction) {
@@ -19,6 +19,12 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
 
   if (!duel || duel.status !== 'IN_PROGRESS') {
     await interaction.reply({ content: 'Este duelo não está em andamento.', ephemeral: true });
+    return;
+  }
+
+  // Only the witness can report results
+  if (interaction.user.id !== duel.witness.discordId) {
+    await interaction.reply({ content: 'Apenas a testemunha pode reportar o resultado.', ephemeral: true });
     return;
   }
 
@@ -57,8 +63,8 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
   try {
     if (duel.channelId && duel.messageId) {
       const channel = await interaction.client.channels.fetch(duel.channelId);
-      if (channel && 'messages' in channel) {
-        const message = await (channel as TextChannel).messages.fetch(duel.messageId);
+      if (channel?.isTextBased() && 'messages' in channel) {
+        const message = await channel.messages.fetch(duel.messageId);
         const embed = buildDuelEmbed(updated);
         const components = buildDuelComponents(updated);
         await message.edit({ embeds: [embed], components });
@@ -70,5 +76,6 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
 
   if (updated.status === 'AWAITING_VALIDATION') {
     notifyWitnessValidation(interaction.client, updated).catch(() => {});
+    notifyResultSubmitted(interaction.client, updated).catch(() => {});
   }
 }

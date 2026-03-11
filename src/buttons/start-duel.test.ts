@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleStartDuel } from './start-duel';
 import { getDuelById, startDuel } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
+import { notifyDuelStarted } from '../lib/notifications';
 
 vi.mock('../services/duel.service', () => ({
   getDuelById: vi.fn(),
@@ -10,6 +11,10 @@ vi.mock('../services/duel.service', () => ({
 
 vi.mock('../lib/embeds', () => ({
   buildDuelEmbed: vi.fn(),
+}));
+
+vi.mock('../lib/notifications', () => ({
+  notifyDuelStarted: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../lib/cooldown', () => ({
@@ -23,6 +28,7 @@ function interaction(customId = 'start-duel:10', userId = 'u1') {
   return {
     customId,
     user: { id: userId },
+    client: { mockClient: true },
     deferUpdate: vi.fn().mockResolvedValue(undefined),
     followUp: vi.fn().mockResolvedValue(undefined),
     editReply: vi.fn().mockResolvedValue(undefined),
@@ -79,6 +85,7 @@ describe('buttons/start-duel', () => {
       content: 'Este duelo não pode ser iniciado.',
       ephemeral: true,
     });
+    expect(notifyDuelStarted).not.toHaveBeenCalled();
   });
 
   it('should update message with submit-result and cancel buttons on success', async () => {
@@ -98,5 +105,22 @@ describe('buttons/start-duel', () => {
     const payload = i.editReply.mock.calls[0][0];
     expect(payload.embeds).toEqual([{ embed: true }]);
     expect(payload.components).toHaveLength(1);
+  });
+
+  it('should notify all participants when duel starts', async () => {
+    const updated = { id: 10, status: 'IN_PROGRESS' };
+    (getDuelById as any).mockResolvedValue({
+      id: 10,
+      status: 'ACCEPTED',
+      challenger: { discordId: 'u1' },
+      opponent: { discordId: 'u2' },
+    });
+    (startDuel as any).mockResolvedValue(updated);
+    (buildDuelEmbed as any).mockReturnValue({ embed: true });
+    const i = interaction();
+
+    await handleStartDuel(i);
+
+    expect(notifyDuelStarted).toHaveBeenCalledWith(i.client, updated);
   });
 });

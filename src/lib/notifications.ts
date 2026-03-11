@@ -1,4 +1,4 @@
-import { Client, TextChannel } from 'discord.js';
+import { Client } from 'discord.js';
 import { DuelWithPlayers } from '../services/duel.service';
 import { logger } from './logger';
 import { prisma } from './prisma';
@@ -53,8 +53,8 @@ async function sendDmWithFallback(
   if (channelId) {
     try {
       const channel = await client.channels.fetch(channelId);
-      if (channel && 'send' in channel) {
-        await (channel as TextChannel).send(`<@${discordId}> — ${message}`);
+      if (channel?.isTextBased() && 'send' in channel) {
+        await channel.send(`<@${discordId}> — ${message}`);
         trackChannelFallbackSent();
       }
     } catch {
@@ -129,6 +129,31 @@ export async function notifyDuelAccepted(client: Client, duel: DuelWithPlayers):
 }
 
 /**
+ * Notifica testemunha e jogadores que o duelo começou (IN_PROGRESS).
+ * Testemunha: avisa que ela deve reportar o resultado.
+ * Jogadores: avisa que devem aguardar a testemunha.
+ */
+export async function notifyDuelStarted(client: Client, duel: DuelWithPlayers): Promise<void> {
+  const witnessMessage =
+    `**Duelo #${duel.id}** — O duelo começou!\n` +
+    `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}> (${duel.format})\n` +
+    `Você é a testemunha. Quando o duelo terminar, clique em "Reportar Resultado" para informar o vencedor.`;
+
+  const playerMessage =
+    `**Duelo #${duel.id}** — O duelo começou!\n` +
+    `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}> (${duel.format})\n` +
+    `Boa sorte! Ao final, a testemunha reportará o resultado.`;
+
+  await Promise.all([
+    sendWithCooldown(client, duel.witness.discordId, witnessMessage, duel.id, duel.channelId, 'duel-started'),
+    sendWithCooldown(client, duel.challenger.discordId, playerMessage, duel.id, duel.channelId, 'duel-started'),
+    sendWithCooldown(client, duel.opponent.discordId, playerMessage, duel.id, duel.channelId, 'duel-started'),
+  ]);
+
+  logger.info('Notificação de duelo iniciado enviada', { duelId: duel.id });
+}
+
+/**
  * Notifica a testemunha por DM que o resultado precisa de validação.
  */
 export async function notifyWitnessValidation(client: Client, duel: DuelWithPlayers): Promise<void> {
@@ -139,6 +164,26 @@ export async function notifyWitnessValidation(client: Client, duel: DuelWithPlay
 
   await sendWithCooldown(client, duel.witness.discordId, message, duel.id, duel.channelId, 'witness-validation');
   logger.info('DM de validação enviada para testemunha', { duelId: duel.id, witnessId: duel.witness.discordId });
+}
+
+/**
+ * Notifica ambos duelistas que o resultado foi reportado e está aguardando validação.
+ */
+export async function notifyResultSubmitted(client: Client, duel: DuelWithPlayers): Promise<void> {
+  const winnerTag =
+    duel.winnerId === duel.challengerId ? `<@${duel.challenger.discordId}>` : `<@${duel.opponent.discordId}>`;
+
+  const message =
+    `**Duelo #${duel.id}** — Resultado reportado!\n` +
+    `A testemunha reportou: ${winnerTag} venceu (**${duel.scoreWinner}-${duel.scoreLoser}**)\n` +
+    `Aguardando validação da testemunha para confirmar o resultado.`;
+
+  await Promise.all([
+    sendWithCooldown(client, duel.challenger.discordId, message, duel.id, duel.channelId, 'result-submitted'),
+    sendWithCooldown(client, duel.opponent.discordId, message, duel.id, duel.channelId, 'result-submitted'),
+  ]);
+
+  logger.info('Notificação de resultado submetido enviada aos duelistas', { duelId: duel.id });
 }
 
 /**
@@ -168,7 +213,7 @@ export async function notifyResultRejected(client: Client, duel: DuelWithPlayers
   const message =
     `**Duelo #${duel.id}** — Resultado rejeitado pela testemunha!\n` +
     `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}>\n` +
-    `Envie o resultado correto no canal do duelo.`;
+    `O duelo voltou para em andamento. A testemunha poderá reportar o resultado novamente.`;
 
   await Promise.all([
     sendWithCooldown(client, duel.challenger.discordId, message, duel.id, duel.channelId, 'result-rejected'),
@@ -239,7 +284,7 @@ export async function notifyAdminReopen(client: Client, duel: DuelWithPlayers, r
   const message =
     `**Duelo #${duel.id}** — Reaberto por um administrador.\n` +
     `<@${duel.challenger.discordId}> vs <@${duel.opponent.discordId}>\n` +
-    `O duelo voltou para IN_PROGRESS. Envie o resultado no canal do duelo.\n` +
+    `O duelo voltou para em andamento. A testemunha poderá reportar o resultado novamente.\n` +
     `**Motivo:** ${reason}`;
 
   await Promise.all([

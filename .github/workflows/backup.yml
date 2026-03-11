@@ -1,0 +1,46 @@
+name: Backup
+
+on:
+  schedule:
+    # Daily at 03:00 UTC (00:00 BRT)
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  backup:
+    name: Database Backup
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Run pg_dump
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
+        run: |
+          TIMESTAMP=$(date -u +%Y%m%d_%H%M%S)
+          FILENAME="ninduelist_${TIMESTAMP}.sql.gz.enc"
+
+          pg_dump "$DATABASE_URL" \
+            --no-owner \
+            --no-privileges \
+            --clean \
+            --if-exists \
+            | gzip \
+            | openssl enc -aes-256-cbc -salt -pbkdf2 \
+                -pass pass:"${{ secrets.BACKUP_PASSPHRASE }}" \
+                -out "$FILENAME"
+
+          echo "BACKUP_FILE=$FILENAME" >> $GITHUB_ENV
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
+
+          # Show file size for monitoring
+          ls -lh "$FILENAME"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ env.TIMESTAMP }}
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 90

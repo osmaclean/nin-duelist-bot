@@ -1,8 +1,9 @@
 import { ChatInputCommandInteraction, EmbedBuilder, Colors } from 'discord.js';
 import { getActiveSeason } from '../services/season.service';
 import { getHeadToHead } from '../services/h2h.service';
+import { DuelWithPlayers } from '../services/duel.service';
 
-function formatDuelLine(duel: any, discordIdA: string): string {
+function formatDuelLine(duel: DuelWithPlayers, discordIdA: string): string {
   const aWon = duel.winner?.discordId === discordIdA;
   const result = aWon ? 'V' : 'D';
   const score = aWon ? `${duel.scoreWinner}-${duel.scoreLoser}` : `${duel.scoreLoser}-${duel.scoreWinner}`;

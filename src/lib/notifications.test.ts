@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   notifyDuelCreated,
   notifyDuelAccepted,
+  notifyDuelStarted,
   notifyWitnessValidation,
+  notifyResultSubmitted,
   notifyDuelConfirmed,
   notifyResultRejected,
   notifyDuelExpiringSoon,
@@ -97,7 +99,7 @@ describe('lib/notifications', () => {
       const channelSend = vi.fn().mockResolvedValue(undefined);
       const client = {
         users: { fetch: vi.fn().mockRejectedValue(new Error('DM fail')) },
-        channels: { fetch: vi.fn().mockResolvedValue({ send: channelSend }) },
+        channels: { fetch: vi.fn().mockResolvedValue({ send: channelSend, isTextBased: () => true }) },
       } as any;
 
       await notifyWitnessValidation(client, makeDuel());
@@ -169,6 +171,62 @@ describe('lib/notifications', () => {
     });
   });
 
+  describe('notifyDuelStarted', () => {
+    it('should send DM to witness and both duelists', async () => {
+      const client = makeClient();
+      await notifyDuelStarted(client, makeDuel({ status: 'IN_PROGRESS' }));
+
+      expect(client.users.fetch).toHaveBeenCalledWith('u3');
+      expect(client.users.fetch).toHaveBeenCalledWith('u1');
+      expect(client.users.fetch).toHaveBeenCalledWith('u2');
+      expect(client._send).toHaveBeenCalledTimes(3);
+    });
+
+    it('should tell witness to report the result', async () => {
+      const client = makeClient();
+      await notifyDuelStarted(client, makeDuel({ status: 'IN_PROGRESS' }));
+
+      const witnessMsg = client._send.mock.calls[0][0];
+      expect(witnessMsg).toContain('testemunha');
+      expect(witnessMsg).toContain('Reportar Resultado');
+    });
+
+    it('should tell players to wait for witness', async () => {
+      const client = makeClient();
+      await notifyDuelStarted(client, makeDuel({ status: 'IN_PROGRESS' }));
+
+      const playerMsg = client._send.mock.calls[1][0];
+      expect(playerMsg).toContain('testemunha reportará o resultado');
+    });
+  });
+
+  describe('notifyResultSubmitted', () => {
+    it('should send DM to both duelists with result info', async () => {
+      const client = makeClient();
+      await notifyResultSubmitted(client, makeDuel());
+
+      expect(client.users.fetch).toHaveBeenCalledWith('u1');
+      expect(client.users.fetch).toHaveBeenCalledWith('u2');
+      expect(client._send).toHaveBeenCalledTimes(2);
+      expect(client._send.mock.calls[0][0]).toContain('Resultado reportado');
+      expect(client._send.mock.calls[0][0]).toContain('2-1');
+    });
+
+    it('should mention the correct winner', async () => {
+      const client = makeClient();
+      await notifyResultSubmitted(client, makeDuel({ winnerId: 2, opponentId: 2 }));
+
+      expect(client._send.mock.calls[0][0]).toContain('<@u2>');
+    });
+
+    it('should mention waiting for witness validation', async () => {
+      const client = makeClient();
+      await notifyResultSubmitted(client, makeDuel());
+
+      expect(client._send.mock.calls[0][0]).toContain('Aguardando validação da testemunha');
+    });
+  });
+
   describe('notifyDuelConfirmed', () => {
     it('should send DM to both duelists with result', async () => {
       const client = makeClient();
@@ -190,7 +248,8 @@ describe('lib/notifications', () => {
       expect(client.users.fetch).toHaveBeenCalledWith('u1');
       expect(client.users.fetch).toHaveBeenCalledWith('u2');
       expect(client._send).toHaveBeenCalledTimes(2);
-      expect(client._send.mock.calls[0][0]).toContain('rejeitado');
+      expect(client._send.mock.calls[0][0]).toContain('Resultado rejeitado');
+      expect(client._send.mock.calls[0][0]).toContain('testemunha poderá reportar');
     });
   });
 
@@ -227,7 +286,7 @@ describe('lib/notifications', () => {
       const channelSend = vi.fn().mockResolvedValue(undefined);
       const client = {
         users: { fetch: vi.fn().mockResolvedValue({ send: vi.fn() }) },
-        channels: { fetch: vi.fn().mockResolvedValue({ send: channelSend }) },
+        channels: { fetch: vi.fn().mockResolvedValue({ send: channelSend, isTextBased: () => true }) },
       } as any;
 
       await notifyWitnessValidation(client, makeDuel());
@@ -308,6 +367,7 @@ describe('lib/notifications', () => {
       expect(client.users.fetch).toHaveBeenCalledWith('u2');
       expect(client._send).toHaveBeenCalledTimes(2);
       expect(client._send.mock.calls[0][0]).toContain('Reaberto por um administrador');
+      expect(client._send.mock.calls[0][0]).toContain('testemunha poderá reportar');
       expect(client._send.mock.calls[0][0]).toContain('Erro na validação');
     });
   });
@@ -383,6 +443,8 @@ describe('lib/notifications', () => {
 
     await expect(notifyDuelCreated(client, duel)).resolves.toBeUndefined();
     await expect(notifyDuelAccepted(client, duel)).resolves.toBeUndefined();
+    await expect(notifyDuelStarted(client, duel)).resolves.toBeUndefined();
+    await expect(notifyResultSubmitted(client, duel)).resolves.toBeUndefined();
     await expect(notifyDuelConfirmed(client, duel)).resolves.toBeUndefined();
     await expect(notifyResultRejected(client, duel)).resolves.toBeUndefined();
     await expect(notifyDuelExpiringSoon(client, duel)).resolves.toBeUndefined();

@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, EmbedBuilder, Colors, GuildMemberRoleManager, TextChannel } from 'discord.js';
+import { ChatInputCommandInteraction, EmbedBuilder, Colors, GuildMemberRoleManager } from 'discord.js';
 import { DuelStatus } from '@prisma/client';
 import { getDuelById, cancelDuel, reopenDuel, forceExpireDuel, adminFixResult } from '../services/duel.service';
 import { reverseResult, applyResult } from '../services/player.service';
@@ -6,7 +6,7 @@ import {
   getActiveSeason,
   getSeasonStatus,
   getSeasonPodium,
-  adminEndSeason,
+  closeSeason,
   adminCreateSeason,
   repairSeasonStats,
 } from '../services/season.service';
@@ -100,8 +100,8 @@ async function updateOriginalEmbed(
   if (!duel.channelId || !duel.messageId) return;
   try {
     const channel = await interaction.client.channels.fetch(duel.channelId);
-    if (channel && 'messages' in channel) {
-      const message = await (channel as TextChannel).messages.fetch(duel.messageId);
+    if (channel?.isTextBased() && 'messages' in channel) {
+      const message = await channel.messages.fetch(duel.messageId);
       const embed = buildDuelEmbed(updated);
       await message.edit({ embeds: [embed], components: [] });
     }
@@ -183,13 +183,15 @@ async function handleAdminReopen(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  // If the duel was CONFIRMED, we need to reverse the stats
-  if (duel.status === 'CONFIRMED' && duel.winnerId) {
-    const loserId = duel.winnerId === duel.challengerId ? duel.opponentId : duel.challengerId;
-    await reverseResult(duel.winnerId, loserId, duel.seasonId);
-  }
+  // Reverse stats (if CONFIRMED) + reopen in a single transaction to avoid inconsistency
+  const reopened = await prisma.$transaction(async (tx) => {
+    if (duel.status === 'CONFIRMED' && duel.winnerId) {
+      const loserId = duel.winnerId === duel.challengerId ? duel.opponentId : duel.challengerId;
+      await reverseResult(duel.winnerId, loserId, duel.seasonId, tx);
+    }
+    return reopenDuel(duelId, tx);
+  }, { timeout: 10_000 });
 
-  const reopened = await reopenDuel(duelId);
   if (!reopened) {
     await interaction.editReply(`Erro ao reabrir duelo #${duelId}.`);
     return;
@@ -440,7 +442,7 @@ async function handleSeasonEnd(interaction: ChatInputCommandInteraction) {
   // Get podium before closing
   const podium = await getSeasonPodium(season.id);
 
-  await adminEndSeason(season.id);
+  await closeSeason(season.id, 'admin');
 
   await logAdminAction({
     action: 'END_SEASON',
@@ -471,8 +473,8 @@ async function handleSeasonEnd(interaction: ChatInputCommandInteraction) {
   // Send podium in the channel (public, not ephemeral)
   try {
     const channel = interaction.channel;
-    if (channel && 'send' in channel) {
-      await (channel as TextChannel).send({ embeds: [embed] });
+    if (channel?.isTextBased() && 'send' in channel) {
+      await channel.send({ embeds: [embed] });
     }
   } catch {
     // Channel may not be available

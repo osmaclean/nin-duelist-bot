@@ -291,6 +291,59 @@ Objetivo: facilitar onboarding de novos jogadores com guia rapido acessivel dire
 
 ---
 
+## Fase 11 — Saude tecnica e dividas (parcial)
+
+### 11.6 — Backup do banco de dados
+- Supabase Free Plan nao inclui backups — risco real de perda de dados
+- Workflow `backup.yml` (GitHub Actions): `pg_dump` diario as 03:00 UTC (00:00 BRT)
+- Backup criptografado com AES-256-CBC (repo publico — dados protegidos por passphrase)
+- Armazenamento: GitHub Artifacts com retencao de 90 dias
+- Trigger manual via `workflow_dispatch` para backups sob demanda
+- Documentacao completa de backup e restore em `docs/BACKUP.md`
+- Secrets necessarios: `DATABASE_URL_BACKUP` + `BACKUP_PASSPHRASE`
+
+---
+
+## Fase 12 — Correcao do fluxo de duelos
+
+Objetivo: corrigir fluxo de duelos em producao — permissoes, papeis e notificacoes.
+
+### 12.1 — Fix: admin cancel em AWAITING_VALIDATION
+- `cancelDuel()` agora aceita AWAITING_VALIDATION na lista de status canceaveis
+
+### 12.2 — Permissoes nos handlers de resultado
+- `pick-winner.ts` e `submit-score.ts` verificam que apenas a testemunha pode reportar resultado
+- Rejeicao ephemeral com mensagem clara
+
+### 12.3 — Novo fluxo: testemunha reporta resultado
+- `submit-result.ts`: apenas a testemunha pode clicar "Enviar Resultado"
+- Jogadores recebem rejeicao: "Apenas a testemunha pode reportar o resultado do duelo."
+- `notifyDuelStarted()`: notifica testemunha (deve reportar) e jogadores (devem aguardar) ao iniciar duelo
+- `start-duel.ts`: chama `notifyDuelStarted` apos transicao para IN_PROGRESS
+
+### 12.4 — Restringir cancelamento por status e papel
+- PROPOSED/ACCEPTED: apenas duelistas podem cancelar
+- IN_PROGRESS/AWAITING_VALIDATION: apenas testemunha pode cancelar
+- Mensagens de rejeicao diferenciadas por fase
+
+### 12.5 — Botoes corretos por status no embed
+- IN_PROGRESS: label renomeado de "Enviar Resultado" para "Reportar Resultado" (reflete novo fluxo da testemunha)
+- AWAITING_VALIDATION: adicionado botao "Cancelar" (antes so tinha Confirmar + Rejeitar)
+- Notificacao DM da testemunha atualizada para referenciar "Reportar Resultado"
+
+### 12.6 — Notificacoes DM ajustadas ao novo fluxo
+- Nova funcao `notifyResultSubmitted()`: notifica ambos duelistas quando resultado e reportado (AWAITING_VALIDATION)
+- Chamada automaticamente em `pick-winner.ts` (MD1) e `submit-score.ts` (MD3)
+- Mensagem de `notifyResultRejected()` corrigida: referencia testemunha como quem re-reporta (nao duelistas)
+- Mensagem de `notifyAdminReopen()` corrigida: referencia testemunha como quem reporta (nao duelistas)
+
+### 12.7 — Mensagens de rejeicao claras em todos os handlers
+- Mensagem de cancelamento diferenciada por status: "duelos em andamento" (IN_PROGRESS) vs "duelos em validação" (AWAITING_VALIDATION)
+- Todos os handlers ja explicam POR QUE o clique foi rejeitado (padronizado nas fases 12.2-12.5)
+- Revisao completa confirmou consistencia em todos os 8 button handlers + 1 modal handler
+
+---
+
 ## Problemas Conhecidos (todos resolvidos)
 
 | # | Problema | Resolvido em |
@@ -311,6 +364,12 @@ Objetivo: facilitar onboarding de novos jogadores com guia rapido acessivel dire
 | 14 | Medalhas vazias no top 3 | Fase 5.5.3 |
 | 15 | `markJobSuccess` no `finally` mascarava falhas | Fase 5.5.4 |
 | 16 | `markSeasonEndingNotified` chamado antes do envio | Fase 5.5.5 |
+| 17 | Qualquer usuario podia submeter resultado do duelo | Fase 12.2-12.3 |
+| 18 | Jogadores podiam cancelar duelos em andamento | Fase 12.4 |
+| 19 | Sem notificacao ao iniciar duelo (IN_PROGRESS) | Fase 12.3 |
+| 20 | Sem backup do banco de dados (Supabase Free) | Fase 11.6 |
+| 21 | Duelistas nao notificados quando resultado e reportado | Fase 12.6 |
+| 22 | Mensagens de rejeicao genericas em AWAITING_VALIDATION | Fase 12.7 |
 
 ---
 
@@ -346,3 +405,7 @@ Objetivo: facilitar onboarding de novos jogadores com guia rapido acessivel dire
 - **Hardening multi-instancia:** Descartado. Instancia unica.
 - **Distribuicao do bot:** Acesso restrito. Novos servidores apenas mediante contato por e-mail com os socios. `DISCORD_GUILD_ID` setado em producao.
 - **Infra de deploy:** Migrado de Railway para Fly.io (regiao `gru` — Sao Paulo). Supabase mantido como banco.
+- **Resultado (novo fluxo):** Apenas a testemunha reporta o resultado. Jogadores so jogam.
+- **Cancelamento por papel:** PROPOSED/ACCEPTED: duelistas cancelam. IN_PROGRESS/AWAITING_VALIDATION: apenas testemunha cancela.
+- **Notificação de resultado:** Duelistas são notificados quando resultado é reportado (AWAITING_VALIDATION). Mensagens de rejeição e reopen referenciam testemunha como quem reporta.
+- **Backup:** pg_dump diário criptografado via GitHub Actions. GitHub Artifacts com 90 dias de retenção. Repo público exige criptografia.

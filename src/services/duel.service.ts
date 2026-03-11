@@ -117,17 +117,17 @@ export async function expireDuel(duelId: number) {
 }
 
 export async function cancelDuel(duelId: number) {
-  return transitionDuel(duelId, ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS'], { status: 'CANCELLED' });
+  return transitionDuel(duelId, ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'AWAITING_VALIDATION'], { status: 'CANCELLED' });
 }
 
 /** Admin: reopen a terminal duel back to IN_PROGRESS, clearing result data */
-export async function reopenDuel(duelId: number) {
+export async function reopenDuel(duelId: number, tx: TxClient = prisma) {
   return transitionDuel(duelId, ['CONFIRMED', 'CANCELLED', 'EXPIRED'], {
     status: 'IN_PROGRESS',
     winnerId: null,
     scoreWinner: null,
     scoreLoser: null,
-  });
+  }, tx);
 }
 
 /** Admin: force a duel to EXPIRED regardless of current non-terminal status */

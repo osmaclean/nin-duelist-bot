@@ -1,9 +1,10 @@
 import { ChatInputCommandInteraction, EmbedBuilder, Colors } from 'discord.js';
 import { getActiveSeason } from '../services/season.service';
 import { getPlayerHistory, HistoryFilters } from '../services/history.service';
+import { DuelWithPlayers } from '../services/duel.service';
 import { buildHistoryPaginationRow } from '../lib/pagination';
 
-function formatDuelLine(duel: any, discordId: string): string {
+function formatDuelLine(duel: DuelWithPlayers, discordId: string): string {
   const isWinner = duel.winner?.discordId === discordId;
   const result = isWinner ? 'V' : 'D';
   const opponentId = duel.challenger.discordId === discordId ? duel.opponent.discordId : duel.challenger.discordId;
