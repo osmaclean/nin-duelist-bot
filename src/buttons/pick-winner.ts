@@ -2,7 +2,7 @@ import { ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle, Acti
 import { getDuelById, submitResult } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
-import { notifyWitnessValidation } from '../lib/notifications';
+import { notifyWitnessValidation, notifyResultSubmitted } from '../lib/notifications';
 
 export async function handlePickWinner(interaction: ButtonInteraction) {
   const parts = interaction.customId.split(':');
@@ -65,6 +65,7 @@ export async function handlePickWinner(interaction: ButtonInteraction) {
 
     if (updated.status === 'AWAITING_VALIDATION') {
       notifyWitnessValidation(interaction.client, updated).catch(() => {});
+      notifyResultSubmitted(interaction.client, updated).catch(() => {});
     }
     return;
   }

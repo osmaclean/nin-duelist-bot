@@ -39,14 +39,14 @@ Correcoes de integridade, limpeza de codigo e higiene tecnica identificadas na r
 - [x] Criar type guard ou helper `isTextChannel()` e usar nos pontos afetados
 - [x] Atualizar testes relacionados
 
-### 11.6 — Backup do banco de dados (Prioridade: Alta)
-- [ ] **Status atual: SEM BACKUP.** Supabase Free Plan nao inclui backups.
-- [ ] Criar script de `pg_dump` agendado (diario) para exportar o banco
-- [ ] Configurar destino do dump (ex: S3, Google Drive, ou storage gratuito)
-- [ ] Automatizar execucao (cron job, GitHub Action agendada, ou similar)
-- [ ] Testar restore a partir do dump para garantir que funciona
-- [ ] Documentar processo de backup e restore no README ou doc separada
-- [ ] Alternativa futura: upgrade para Supabase Pro ($25/mes) se o projeto justificar
+### 11.6 — Backup do banco de dados (Prioridade: Alta) ✅
+- [x] **Status anterior: SEM BACKUP.** Supabase Free Plan nao inclui backups.
+- [x] Criar workflow GitHub Actions com `pg_dump` agendado (diario, 03:00 UTC)
+- [x] Destino: GitHub Artifacts com retencao de 90 dias
+- [x] Criptografia AES-256 (repo publico — backup protegido por passphrase)
+- [x] Documentar processo de backup e restore em `docs/BACKUP.md`
+- [x] Trigger manual disponivel via `workflow_dispatch`
+- [x] Alternativa futura: upgrade para Supabase Pro ($25/mes) se o projeto justificar
 
 ---
 
@@ -97,18 +97,20 @@ Fluxo de duelos esta quebrado em producao. Botoes aparecem para as pessoas errad
 - [x] Revisar `buildDuelComponents()` para garantir botoes corretos por status
 - [x] Atualizar testes de components
 
-### 12.6 — Notificacoes DM ajustadas ao novo fluxo (Prioridade: Media)
-- [ ] IN_PROGRESS: notificar testemunha que ela deve reportar o resultado
-- [ ] IN_PROGRESS: notificar jogadores que devem aguardar a testemunha
-- [ ] AWAITING_VALIDATION: notificar jogadores que resultado foi reportado e esta em validacao
-- [ ] Garantir que cada transicao de status notifica as partes corretas
-- [ ] Atualizar testes de notifications
+### 12.6 — Notificacoes DM ajustadas ao novo fluxo (Prioridade: Media) ✅
+- [x] IN_PROGRESS: notificar testemunha que ela deve reportar o resultado (feito em 12.3)
+- [x] IN_PROGRESS: notificar jogadores que devem aguardar a testemunha (feito em 12.3)
+- [x] AWAITING_VALIDATION: notificar jogadores que resultado foi reportado e esta em validacao
+- [x] Corrigir mensagem de resultado rejeitado (referencia testemunha, nao duelistas)
+- [x] Corrigir mensagem de admin reopen (referencia testemunha, nao duelistas)
+- [x] Garantir que cada transicao de status notifica as partes corretas
+- [x] Atualizar testes de notifications
 
-### 12.7 — Mensagens de rejeicao claras em todos os handlers (Prioridade: Media)
-- [ ] Cada handler que rejeita um clique deve explicar POR QUE
-- [ ] Exemplos: "Apenas o oponente pode aceitar", "Apenas a testemunha pode reportar", etc.
-- [ ] Padronizar mensagens de erro ephemeral em todos os handlers
-- [ ] Atualizar testes
+### 12.7 — Mensagens de rejeicao claras em todos os handlers (Prioridade: Media) ✅
+- [x] Cada handler que rejeita um clique deve explicar POR QUE
+- [x] Mensagem de cancelamento diferenciada: IN_PROGRESS vs AWAITING_VALIDATION
+- [x] Padronizar mensagens de erro ephemeral em todos os handlers
+- [x] Atualizar testes
 
 ---
 

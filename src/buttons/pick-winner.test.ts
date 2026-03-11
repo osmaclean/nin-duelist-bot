@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handlePickWinner } from './pick-winner';
 import { getDuelById, submitResult } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
+import { notifyResultSubmitted } from '../lib/notifications';
 
 vi.mock('../services/duel.service', () => ({
   getDuelById: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock('../lib/embeds', () => ({
 
 vi.mock('../lib/notifications', () => ({
   notifyWitnessValidation: vi.fn().mockResolvedValue(undefined),
+  notifyResultSubmitted: vi.fn().mockResolvedValue(undefined),
 }));
 
 function interaction(customId = 'pick-winner:10:1', userId = 'w1') {
@@ -103,6 +105,17 @@ describe('buttons/pick-winner', () => {
       content: 'Resultado enviado! Aguardando validação da testemunha.',
       components: [],
     });
+  });
+
+  it('should notify duelists when result is submitted (MD1)', async () => {
+    (getDuelById as any).mockResolvedValue(duelBase('MD1'));
+    (submitResult as any).mockResolvedValue({ id: 10, status: 'AWAITING_VALIDATION' });
+    (buildDuelEmbed as any).mockReturnValue({ embed: true });
+    const i = interaction('pick-winner:10:1');
+
+    await handlePickWinner(i);
+
+    expect(notifyResultSubmitted).toHaveBeenCalledWith(i.client, { id: 10, status: 'AWAITING_VALIDATION' });
   });
 
   it('should show error when MD1 submitResult fails', async () => {

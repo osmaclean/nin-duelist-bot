@@ -291,6 +291,19 @@ Objetivo: facilitar onboarding de novos jogadores com guia rapido acessivel dire
 
 ---
 
+## Fase 11 — Saude tecnica e dividas (parcial)
+
+### 11.6 — Backup do banco de dados
+- Supabase Free Plan nao inclui backups — risco real de perda de dados
+- Workflow `backup.yml` (GitHub Actions): `pg_dump` diario as 03:00 UTC (00:00 BRT)
+- Backup criptografado com AES-256-CBC (repo publico — dados protegidos por passphrase)
+- Armazenamento: GitHub Artifacts com retencao de 90 dias
+- Trigger manual via `workflow_dispatch` para backups sob demanda
+- Documentacao completa de backup e restore em `docs/BACKUP.md`
+- Secrets necessarios: `DATABASE_URL_BACKUP` + `BACKUP_PASSPHRASE`
+
+---
+
 ## Fase 12 — Correcao do fluxo de duelos
 
 Objetivo: corrigir fluxo de duelos em producao — permissoes, papeis e notificacoes.
@@ -318,6 +331,17 @@ Objetivo: corrigir fluxo de duelos em producao — permissoes, papeis e notifica
 - AWAITING_VALIDATION: adicionado botao "Cancelar" (antes so tinha Confirmar + Rejeitar)
 - Notificacao DM da testemunha atualizada para referenciar "Reportar Resultado"
 
+### 12.6 — Notificacoes DM ajustadas ao novo fluxo
+- Nova funcao `notifyResultSubmitted()`: notifica ambos duelistas quando resultado e reportado (AWAITING_VALIDATION)
+- Chamada automaticamente em `pick-winner.ts` (MD1) e `submit-score.ts` (MD3)
+- Mensagem de `notifyResultRejected()` corrigida: referencia testemunha como quem re-reporta (nao duelistas)
+- Mensagem de `notifyAdminReopen()` corrigida: referencia testemunha como quem reporta (nao duelistas)
+
+### 12.7 — Mensagens de rejeicao claras em todos os handlers
+- Mensagem de cancelamento diferenciada por status: "duelos em andamento" (IN_PROGRESS) vs "duelos em validação" (AWAITING_VALIDATION)
+- Todos os handlers ja explicam POR QUE o clique foi rejeitado (padronizado nas fases 12.2-12.5)
+- Revisao completa confirmou consistencia em todos os 8 button handlers + 1 modal handler
+
 ---
 
 ## Problemas Conhecidos (todos resolvidos)
@@ -343,6 +367,9 @@ Objetivo: corrigir fluxo de duelos em producao — permissoes, papeis e notifica
 | 17 | Qualquer usuario podia submeter resultado do duelo | Fase 12.2-12.3 |
 | 18 | Jogadores podiam cancelar duelos em andamento | Fase 12.4 |
 | 19 | Sem notificacao ao iniciar duelo (IN_PROGRESS) | Fase 12.3 |
+| 20 | Sem backup do banco de dados (Supabase Free) | Fase 11.6 |
+| 21 | Duelistas nao notificados quando resultado e reportado | Fase 12.6 |
+| 22 | Mensagens de rejeicao genericas em AWAITING_VALIDATION | Fase 12.7 |
 
 ---
 
@@ -380,3 +407,5 @@ Objetivo: corrigir fluxo de duelos em producao — permissoes, papeis e notifica
 - **Infra de deploy:** Migrado de Railway para Fly.io (regiao `gru` — Sao Paulo). Supabase mantido como banco.
 - **Resultado (novo fluxo):** Apenas a testemunha reporta o resultado. Jogadores so jogam.
 - **Cancelamento por papel:** PROPOSED/ACCEPTED: duelistas cancelam. IN_PROGRESS/AWAITING_VALIDATION: apenas testemunha cancela.
+- **Notificação de resultado:** Duelistas são notificados quando resultado é reportado (AWAITING_VALIDATION). Mensagens de rejeição e reopen referenciam testemunha como quem reporta.
+- **Backup:** pg_dump diário criptografado via GitHub Actions. GitHub Artifacts com 90 dias de retenção. Repo público exige criptografia.

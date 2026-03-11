@@ -152,7 +152,7 @@ describe('buttons/cancel-duel', () => {
     await handleCancelDuel(i);
 
     expect(i.followUp).toHaveBeenCalledWith({
-      content: 'Apenas a testemunha pode cancelar duelos em andamento.',
+      content: 'Apenas a testemunha pode cancelar duelos em validação.',
       ephemeral: true,
     });
   });

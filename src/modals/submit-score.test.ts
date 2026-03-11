@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleSubmitScoreModal } from './submit-score';
 import { getDuelById, submitResult } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
-import { notifyWitnessValidation } from '../lib/notifications';
+import { notifyWitnessValidation, notifyResultSubmitted } from '../lib/notifications';
 
 vi.mock('../services/duel.service', () => ({
   getDuelById: vi.fn(),
@@ -15,6 +15,7 @@ vi.mock('../lib/embeds', () => ({
 
 vi.mock('../lib/notifications', () => ({
   notifyWitnessValidation: vi.fn().mockResolvedValue(undefined),
+  notifyResultSubmitted: vi.fn().mockResolvedValue(undefined),
 }));
 
 function modalInteraction(values: Record<string, string>, customId = 'submit-score:10:1', userId = 'w1') {
@@ -138,6 +139,7 @@ describe('modals/submit-score', () => {
 
     expect(submitResult).toHaveBeenCalledWith(10, 1, 2, 0);
     expect(notifyWitnessValidation).toHaveBeenCalledWith(i.client, updated);
+    expect(notifyResultSubmitted).toHaveBeenCalledWith(i.client, updated);
   });
 
   it('should accept valid MD3 score 2-1', async () => {

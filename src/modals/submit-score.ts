@@ -2,7 +2,7 @@ import { ModalSubmitInteraction } from 'discord.js';
 import { getDuelById, submitResult } from '../services/duel.service';
 import { buildDuelEmbed } from '../lib/embeds';
 import { buildDuelComponents } from '../lib/components';
-import { notifyWitnessValidation } from '../lib/notifications';
+import { notifyWitnessValidation, notifyResultSubmitted } from '../lib/notifications';
 import { validateScore } from '../lib/validation';
 
 export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction) {
@@ -76,5 +76,6 @@ export async function handleSubmitScoreModal(interaction: ModalSubmitInteraction
 
   if (updated.status === 'AWAITING_VALIDATION') {
     notifyWitnessValidation(interaction.client, updated).catch(() => {});
+    notifyResultSubmitted(interaction.client, updated).catch(() => {});
   }
 }

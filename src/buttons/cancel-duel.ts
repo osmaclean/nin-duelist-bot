@@ -14,7 +14,10 @@ export const handleCancelDuel = createDuelButtonHandler({
     }
 
     // IN_PROGRESS/AWAITING_VALIDATION: only witness can cancel
-    return isWitness ? null : 'Apenas a testemunha pode cancelar duelos em andamento.';
+    if (duel.status === 'IN_PROGRESS') {
+      return isWitness ? null : 'Apenas a testemunha pode cancelar duelos em andamento.';
+    }
+    return isWitness ? null : 'Apenas a testemunha pode cancelar duelos em validação.';
   },
   execute: (duelId) => cancelDuel(duelId),
   errorMessage: 'Este duelo não pode mais ser cancelado.',
